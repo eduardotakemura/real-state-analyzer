@@ -7,7 +7,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
 import folium
-from folium.plugins import HeatMap
+from folium.plugins import HeatMap, FloatImage
+import io
+import base64
 sns.set()
 pd.options.display.float_format = '{:,.2f}'.format
 
@@ -217,7 +219,7 @@ class Preprocessor:
         return df
 
     def _create_clusters_map(self, df):
-        """Create a folium map with observation points, highlighting clusters, and save it."""
+        """Create a folium map with observation points, highlighting clusters, and add a legend as an image."""
         map_center = [df['latitude'].mean(), df['longitude'].mean()]
         mymap = folium.Map(location=map_center, zoom_start=11)
 
@@ -240,19 +242,27 @@ class Preprocessor:
                 popup=f'Cluster: {cluster}'
             ).add_to(mymap)
 
-        # Add a legend to the map
-        legend_html = '''
-        <div style="position: fixed;
-                    bottom: 50px; left: 50px; width: 150px; height: auto;
-                    border:2px solid grey; z-index:9999; font-size:14px;
-                    background-color:white; opacity: 0.85;">
-        <strong> Locations: </strong><br>
-        '''
-        for cluster, color in cluster_colors.items():
-            legend_html += f'<i style="background:{color};width:20px;height:20px;float:left;margin-right:10px;"></i>Location {cluster}<br>'
-
-        legend_html += '</div>'
-        mymap.get_root().html.add_child(folium.Element(legend_html))
+        # # Step 1: Generate the legend as an image
+        # fig, ax = plt.subplots(figsize=(0.4, num_clusters*0.1))
+        # ax.axis('off')  # Turn off the axis
+        #
+        # # Create a color box for each cluster
+        # for idx, (cluster, color) in enumerate(cluster_colors.items()):
+        #     ax.text(0.5, idx, f'Cluster {cluster}', va='center', ha='center', fontsize=8, color='black')
+        #     ax.add_patch(plt.Rectangle((0, idx - 0.5), 1, 1, color=color))
+        #
+        # # Save the figure as a PNG image in memory
+        # buf = io.BytesIO()
+        # plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.1)
+        # plt.close(fig)
+        #
+        # # Encode the image in base64 for Folium
+        # buf.seek(0)
+        # image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        #
+        # # Step 2: Use FloatImage to embed the image as a legend in Folium
+        # legend_url = f"data:image/png;base64,{image_base64}"
+        # FloatImage(legend_url, bottom=5, right=5).add_to(mymap)
 
         return mymap
 

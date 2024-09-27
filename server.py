@@ -1,5 +1,5 @@
 import pandas as pd
-from models import analyzer, preprocessor
+from models import analyzer, preprocessor, model
 
 # Load data from CSV
 def load_data():
@@ -89,6 +89,16 @@ def get_report(filters):
 
     return (summary_by_type, type_distribution, summary_by_location, location_plots, clusters_map,
             price_heatmap, report_summary)
+
+def get_prediction(input_data):
+    operation = input_data['operation']
+    print(operation)
+    input_data.pop('operation')
+    print(input_data)
+    loaded_model = model.PriceModel.load_model(f"data/{operation}_model.h5", f"data/{operation}_scaler.pkl", f"data/{operation}_config.json")
+
+    prediction = loaded_model.predict(input_data)
+    return prediction
 
 df = load_data()
 analyzer = analyzer.Analyzer()

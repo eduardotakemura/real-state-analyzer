@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_folium import folium_static
-from server import get_initial_options, get_report
+from server import get_initial_options, get_report, get_prediction
 
 def render_form(fields_options):
     # Header #
@@ -44,6 +44,9 @@ def render_report(filters):
     (summary_by_type, type_distribution, summary_by_location,
      location_plots, clusters_map, price_heatmap, report_summary) = get_report(filters)
 
+    # Store report data in session state
+    st.session_state['report_data'] = filters
+
     # Report Summary #
     st.markdown("---")
     st.subheader('Report Summary')
@@ -78,18 +81,65 @@ def render_report(filters):
     st.subheader("Price Heatmap")
     folium_static(price_heatmap, width=700)
 
-def main():
-    with st.spinner('Loading Dataset...'):
-        # Fetch dropdown options from the backend #
-        fields_options = get_initial_options()
+def render_price_form():
+    """Render the Price Predictor form."""
+    st.subheader("Price Predictor")
+    with st.form(key='price_predictor_form'):
+        operation = st.selectbox("Operation (Selling or Renting)", ["selling", "renting"])
+        size = st.number_input("Size (m2)", value=0, step=1)
+        dorms = st.number_input("Number of Dorms", value=1, step=1)
+        toilets = st.number_input("Number of Toilets", value=1, step=1)
+        garages = st.number_input("Number of Garages", value=1, step=1)
+        location = st.number_input("Location (Check clusters map)", value=0, step=1)
+        property_type = st.selectbox("Type", ["Apartment", "House"])
+        submit_button = st.form_submit_button("Predict Price")
 
-        # Render form inputs and capture submitted filters #
+        if submit_button:
+            with st.spinner('Processing Prediction...'):
+                st.session_state['predicted_price'] = {
+                    'size': size,
+                    'dorms': dorms,
+                    'toilets': toilets,
+                    'garage': garages,
+                    'location': location,
+                    'type': 1 if property_type == "Apartament" else 0,
+                    'operation': operation
+                }
+                prediction = get_prediction(st.session_state['predicted_price'])
+                st.subheader(f"Predicted Price: {prediction}")
+
+def main():
+    # Load initial options #
+    fields_options = get_initial_options()
+
+    # Check if a report has already been submitted #
+    if 'report_data' in st.session_state:
+        # Render the main form with initial options #
         filters = render_form(fields_options)
 
-    # Display Report #
-    if st.button('Submit'):
-        with st.spinner('Processing Report...'):
-            render_report(filters)
+        # Check if button was pressed #
+        if st.button('Submit New Report'):
+            # Remove previous report data state #
+            st.session_state.pop('report_data', None)
+
+            # Render new report #
+            with st.spinner('Processing Report...'):
+                render_report(filters)
+                render_price_form()
+        # If not, render previous report #
+        else:
+            with st.spinner('Processing Report...'):
+                render_report(st.session_state['report_data'])
+                render_price_form()
+
+    # First time on page #
+    else:
+        filters = render_form(fields_options)
+
+        if st.button('Submit'):
+            with st.spinner('Processing Report...'):
+                render_report(filters)
+                render_price_form()
 
 if __name__ == '__main__':
     main()
