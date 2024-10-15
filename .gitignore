@@ -1,0 +1,8 @@
+.venv
+.idea
+__pycache__
+api/data.db
+api/migrations
+data
+bash.txt
+
