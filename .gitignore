@@ -3,6 +3,11 @@
 __pycache__
 api/data.db
 api/migrations
-data
 bash.txt
+app/react/node_modules
+app/react/README.md
+data/processed
+data/scrapped
+
+
 
