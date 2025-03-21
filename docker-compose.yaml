@@ -51,5 +51,15 @@ services:
   #   tty: true
   #   depends_on:
   #     - api
+  ## RABBITMQ
+  rabbitmq:
+    image: 'rabbitmq:management' # RabbitMQ with management plugin (UI for monitoring)
+    container_name: rabbitmq
+    ports:
+      - '15672:15672' # RabbitMQ management UI (access via http://localhost:15672)
+      - '5672:5672' # RabbitMQ AMQP protocol port (used by services to send/receive messages)
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
 volumes:
   postgres_data:
