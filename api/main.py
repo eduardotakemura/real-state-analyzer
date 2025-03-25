@@ -2,12 +2,17 @@ from fastapi import Depends, Request, Path
 from sqlalchemy.orm import Session
 from crud import get_all_properties, get_properties_with_filter, get_properties_count, get_property_by_id, get_error
 from extensions import get_db, app
-from messages import send_message, start_listener
+from messages import send_analysis_request, send_price_prediction_request, start_listener
+from utils import extract_filters
 
 ## ---------------- Dependencies Methods ---------------- ##
 async def get_filters(request: Request):
     filter_data = await request.json()
-    return filter_data
+    return extract_filters(filter_data)
+
+async def get_input(request: Request):
+    input_data = await request.json()
+    return input_data
 
 ## ---------------- Routes ---------------- ##
 # Start RabbitMQ listener when FastAPI starts
@@ -19,11 +24,17 @@ def startup_event():
 def read_root():
     return {"message": "Hello, FastAPI!"}
 
-@app.post("/send-message/{message}")
-def send_message_route(message: str):
-    
-    send_message('')
-    return {"message": f"Message: '{message}' sent!"}
+@app.post("/request-analysis")
+def request_analysis(filters: dict = Depends(get_filters)):
+    print(f" [*] Requesting analysis for filters: {filters}")
+    request = send_analysis_request(filters)
+    return {"message": f"{request}"}
+
+@app.post("/request-price-prediction")
+def request_price_prediction(input: dict = Depends(get_input)):
+    print(f" [*] Requesting price prediction for input: {input}")
+    request = send_price_prediction_request(input)
+    return {"message": f"{request}"}
 
 @app.get("/error")
 def error_route():

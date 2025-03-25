@@ -23,7 +23,6 @@ def run_analysis(filters):
 
 def _fetch_data(filters):
     try:
-        filters = {}
         response = requests.post(f"http://api:8000/properties/filter", timeout=10, json=filters)
         response.raise_for_status() 
         data = response.json()
@@ -87,7 +86,8 @@ try:
     def callback(ch, method, properties, body):
         print(body)
         # Run analysis
-        report = run_analysis(body).to_json()
+        report = run_analysis(json.loads(body))
+        print(report)
         
         # Send response
         channel.basic_publish(

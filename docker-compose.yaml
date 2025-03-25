@@ -62,16 +62,17 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
-  # price_model:
-  #   build:
-  #     context: ./price_model
-  #     dockerfile: Dockerfile
-  #   container_name: price_model
-  #   volumes:
-  #     - ./price_model/data:/app/data # Bind mount to access models
-  #   restart: always
-  #   depends_on:
-  #     - rabbitmq
+  ## PRICE PREDICTION MODEL
+  price_model:
+    build:
+      context: ./price_model
+      dockerfile: Dockerfile
+    container_name: price_model
+    volumes:
+      - ./price_model/data:/app/data # Bind mount to access models
+    depends_on:
+      - rabbitmq
+  ## ANALYZER
   analyzer:
     build:
       context: ./analyzer
@@ -79,7 +80,7 @@ services:
     container_name: analyzer
     # volumes:
     #   - ./analyzer:/app
-    restart: always
+    #restart: always
     depends_on:
       - rabbitmq
 volumes:
