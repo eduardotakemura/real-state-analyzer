@@ -29,7 +29,7 @@ def get_properties_with_filter(db: Session, filters: dict):
         if 'price_lte' in processed_filters:
             query = query.filter(Properties.price <= processed_filters['price_lte'])
     
-        return query.all()
+        return query.limit(10).all()
     except Exception as e:
         _error_handler(e)
 

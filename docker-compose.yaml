@@ -32,6 +32,7 @@ services:
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - database
+      - rabbitmq
   ## REACT FRONTEND
   # react:
   #   container_name: react
@@ -61,5 +62,25 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+  # price_model:
+  #   build:
+  #     context: ./price_model
+  #     dockerfile: Dockerfile
+  #   container_name: price_model
+  #   volumes:
+  #     - ./price_model/data:/app/data # Bind mount to access models
+  #   restart: always
+  #   depends_on:
+  #     - rabbitmq
+  analyzer:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    container_name: analyzer
+    # volumes:
+    #   - ./analyzer:/app
+    restart: always
+    depends_on:
+      - rabbitmq
 volumes:
   postgres_data:
