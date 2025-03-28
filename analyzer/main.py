@@ -1,6 +1,6 @@
 import pika
 import pandas as pd
-from utils import correlation_matrix, location_plots, summarize_by_location, summarize_by_type, type_distribution
+from utils import correlation_matrix, location_plots, summarize_by_location, summarize_by_type, type_distribution, preprocess_data
 import requests
 import json
 import time
@@ -10,16 +10,18 @@ def run_analysis(filters):
     # Fetch data from database
     df = _fetch_data(filters)
     
+    # Preprocess data
+    processed_df = preprocess_data(df)
+    
     # Run analysis
-    # corr_matrix = correlation_matrix(df)
-    # loc_plots = location_plots(df)
-    # loc_summary = summarize_by_location(df)
-    # type_summary = summarize_by_type(df)
-    # type_dist = type_distribution(df)
+    corr_matrix = correlation_matrix(processed_df)
+    loc_plots = location_plots(processed_df)
+    loc_summary = summarize_by_location(processed_df)
+    type_summary = summarize_by_type(processed_df)
+    type_dist = type_distribution(processed_df)
     
     # Return analysis
-    #return _format_response(corr_matrix, loc_plots, loc_summary, type_summary, type_dist)
-    return df
+    return _format_response(corr_matrix, loc_plots, loc_summary, type_summary, type_dist)
 
 def _fetch_data(filters):
     try:

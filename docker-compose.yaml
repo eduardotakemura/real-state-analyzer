@@ -69,6 +69,7 @@ services:
       dockerfile: Dockerfile
     container_name: price_model
     volumes:
+      - price_model_data:/app/data # Named volume to store data
       - ./price_model/data:/app/data # Bind mount to access models
     depends_on:
       - rabbitmq

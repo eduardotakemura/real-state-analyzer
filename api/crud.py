@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from models import Properties
 from fastapi import HTTPException
-from utils import extract_filters
+from utils import export_to_csv
 
 def get_all_properties(db: Session):
     try:
@@ -29,7 +29,7 @@ def get_properties_with_filter(db: Session, filters: dict):
         if 'price_lte' in filters:
             query = query.filter(Properties.price <= filters['price_lte'])
     
-        return query.limit(10).all()
+        return query.all()
     except Exception as e:
         _error_handler(e)
 
@@ -42,6 +42,13 @@ def get_properties_count(db: Session):
 def get_property_by_id(db: Session, property_id: int):
     try:
         return db.query(Properties).filter(Properties.id == property_id).first()
+    except Exception as e:
+        _error_handler(e)
+
+def get_export_to_csv(db: Session):
+    try:
+        properties = db.query(Properties).all()
+        return export_to_csv(properties)
     except Exception as e:
         _error_handler(e)
 

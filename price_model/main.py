@@ -1,11 +1,8 @@
 import pika
-import json
 import time
+import json
 from pika.exceptions import AMQPConnectionError
-
-def run_prediction(input: dict):
-    print(f" [*] Running price prediction for input: {input}")
-    return f"Some prediction here! {input.get('type')}"
+from utils import run_training, make_prediction, retrieve_features_cols
 
 def create_connection():
     retries = 20
@@ -35,23 +32,61 @@ try:
     # Declare a queues
     channel.queue_declare(queue='price_prediction_queue', durable=True)
     channel.queue_declare(queue='price_prediction_response_queue', durable=True)
+    channel.queue_declare(queue='training_queue', durable=True)
+    channel.queue_declare(queue='training_response_queue', durable=True)
+    channel.queue_declare(queue='features_cols_queue', durable=True)
+    channel.queue_declare(queue='features_cols_response_queue', durable=True)
 
-    def callback(ch, method, properties, body):
-        print(body)
-        # Run analysis
-        prediction = run_prediction(json.loads(body))
-        print(prediction)
+    def training_callback(ch, method, properties, body):
+        print(f" [*] Training Task received")
+        # Run training
+        result = run_training()
         
+        if result:
+            response = "Training completed"
+        else:
+            response = "Training failed"
+            
+        # Send response
+        channel.basic_publish(
+            exchange='',
+            routing_key='training_response_queue',
+            body=response,
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+
+    def price_prediction_callback(ch, method, properties, body):
+        print(f" [*] Price Prediction Task received")
+        print(f"[*] Input data: {body}")
+
+        # Make prediction
+        prediction = make_prediction(json.loads(body))
+
         # Send response
         channel.basic_publish(
             exchange='',
             routing_key='price_prediction_response_queue',
-            body=f"{prediction}",
+            body=f"Price prediction completed: {prediction}",
             properties=pika.BasicProperties(delivery_mode=2)
         )
+        
+    def features_cols_callback(ch, method, properties, body):
+        print(f" [*] Features Columns Task received")
+        # Retrieve features columns
+        features_cols = retrieve_features_cols()
 
+        # Send response
+        channel.basic_publish(
+            exchange='',
+            routing_key='features_cols_response_queue',
+            body=f"Features columns retrieved: {features_cols}",
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+        
     # Consume messages
-    channel.basic_consume(queue='price_prediction_queue', on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue='price_prediction_queue', on_message_callback=price_prediction_callback, auto_ack=True)
+    channel.basic_consume(queue='training_queue', on_message_callback=training_callback, auto_ack=True)
+    channel.basic_consume(queue='features_cols_queue', on_message_callback=features_cols_callback, auto_ack=True)
 
     print('Waiting for messages...')
     channel.start_consuming()

@@ -41,6 +41,43 @@ def send_price_prediction_request(input: dict):
     except Exception as e:
         return f" [!] Error sending price prediction request: {e}"
 
+def send_training_request():
+    """Send a message to the RabbitMQ queue for training"""
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        channel = connection.channel()
+        channel.queue_declare(queue='training_queue', durable=True)
+
+        channel.basic_publish(
+            exchange='',
+            routing_key='training_queue',   
+            body=json.dumps({}),
+            properties=pika.BasicProperties(delivery_mode=2)    
+        )
+        connection.close()
+        return f" [x] Sent Training request"
+    except Exception as e:
+        return f" [!] Error sending training request: {e}"
+
+def send_features_cols_request(): 
+    """Send a message to the RabbitMQ queue for features columns"""
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        channel = connection.channel()
+        channel.queue_declare(queue='features_cols_queue', durable=True)
+
+        channel.basic_publish(
+            exchange='',
+            routing_key='features_cols_queue',
+            body=json.dumps({}),
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+        connection.close()
+        return f" [x] Sent Features Columns request"
+    except Exception as e:
+        return f" [!] Error sending features columns request: {e}"
+
+
 ## ---- Listener ---- ##
 def create_connection():
     print(" [*] Trying to connect to RabbitMQ...")
@@ -71,6 +108,8 @@ def message_listener():
         channel = connection.channel()
         channel.queue_declare(queue='analyzer_response_queue', durable=True)
         channel.queue_declare(queue='price_prediction_response_queue', durable=True)
+        channel.queue_declare(queue='training_response_queue', durable=True)
+        channel.queue_declare(queue='features_cols_response_queue', durable=True)
 
         def analyzer_callback(ch, method, properties, body):
             print(f" [x] Received Analyzer response: {body}")  # Log response
@@ -78,8 +117,16 @@ def message_listener():
         def price_prediction_callback(ch, method, properties, body):
             print(f" [x] Received Price Prediction response: {body}")  # Log response
 
+        def training_callback(ch, method, properties, body):
+            print(f" [x] Received Training response: {body}")  # Log response
+            
+        def features_cols_callback(ch, method, properties, body):
+            print(f" [x] Received Features Columns response: {body}")  # Log response
+
         channel.basic_consume(queue='analyzer_response_queue', on_message_callback=analyzer_callback, auto_ack=True)
         channel.basic_consume(queue='price_prediction_response_queue', on_message_callback=price_prediction_callback, auto_ack=True)
+        channel.basic_consume(queue='training_response_queue', on_message_callback=training_callback, auto_ack=True)
+        channel.basic_consume(queue='features_cols_response_queue', on_message_callback=features_cols_callback, auto_ack=True)
         channel.start_consuming()
         
     except Exception as e:

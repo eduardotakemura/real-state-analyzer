@@ -1,8 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from preprocessor import ModelPreprocessor
 sns.set_theme()
 pd.options.display.float_format = '{:,.2f}'.format
+
+def preprocess_data(df):
+    preprocessor = ModelPreprocessor()
+    processed_df = preprocessor.process_df(df)
+    return processed_df
+
 
 def correlation_matrix(df, show=True):
     corr_matrix = df.corr()

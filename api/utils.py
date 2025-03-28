@@ -1,3 +1,8 @@
+from models import Properties
+from fastapi import Response
+from io import StringIO
+import csv
+
 def extract_filters(requested_filters: dict):
     # Initiate filters list #
     filters = {}
@@ -55,3 +60,34 @@ def extract_filters(requested_filters: dict):
         filters['price_lte'] = max_price
 
     return filters
+
+def export_to_csv(properties: list):
+     # Get all column names from the Properties model
+    columns = [column.name for column in Properties.__table__.columns]
+    
+    # Create CSV content
+    csv_content = []
+    csv_content.append(columns)  # Add header row
+    
+    # Add data rows
+    for property in properties:
+        row = [getattr(property, column) for column in columns]
+        csv_content.append(row)
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write all rows to the CSV
+    writer.writerows(csv_content)
+    
+    # Get the CSV string
+    csv_string = output.getvalue()
+    
+    # Save locally
+    with open('properties.csv', 'w') as file:
+        file.write(csv_string)
+    
+    # Return length of the csv file
+    return len(csv_string)
+    
+    
