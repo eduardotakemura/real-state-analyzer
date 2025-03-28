@@ -2,7 +2,8 @@ from fastapi import Depends, Request, Path
 from sqlalchemy.orm import Session
 import crud
 from extensions import get_db, app
-import messages
+from messages.requests import send_analysis_request, send_price_prediction_request, send_training_request, send_features_cols_request
+from messages.messages import start_listener
 from utils import extract_filters
 
 ## ---------------- Dependencies Methods ---------------- ##
@@ -18,17 +19,14 @@ async def get_input(request: Request):
 # Start RabbitMQ listener when FastAPI starts
 @app.on_event("startup")
 def startup_event():
-    messages.start_listener()
-    
-@app.get("/")
-def read_root():
-    return {"message": "Hello, FastAPI!"}
+    start_listener()
 
+## ---------------- Requests ---------------- ##
 # Request analysis
 @app.post("/request-analysis")
 def request_analysis(filters: dict = Depends(get_filters)):
     print(f" [*] Requesting analysis for filters: {filters}")
-    request = messages.send_analysis_request(filters)
+    request = send_analysis_request(filters)
     return {"message": f"{request}"}
 
 # Request price prediction
@@ -36,26 +34,22 @@ def request_analysis(filters: dict = Depends(get_filters)):
 def request_price_prediction(input: dict = Depends(get_input)):
     input["features"] = [0 for _ in range(21)]
     print(f" [*] Requesting price prediction for input: {input}")
-    request = messages.send_price_prediction_request(input)
+    request = send_price_prediction_request(input)
     return {"message": f"{request}"}
 
 # Request training
 @app.get("/request-training")
 def request_training():
     print(f" [*] Requesting training")
-    request = messages.send_training_request()
+    request = send_training_request()
     return {"message": f"{request}"}
 
 # Request features columns
 @app.get("/request-features-cols")
 def request_features_cols():
     print(f" [*] Requesting features columns")
-    request = messages.send_features_cols_request()
+    request = send_features_cols_request()
     return {"message": f"{request}"}
-
-@app.get("/error")
-def error_route():
-    return crud.get_error()
 
 ## ---------------- Properties Routes ---------------- ##
 # Get all properties

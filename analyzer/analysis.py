@@ -1,22 +1,75 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from preprocessor import ModelPreprocessor
+from preprocessor import Preprocessor
+import requests
+import io
+import base64
 sns.set_theme()
 pd.options.display.float_format = '{:,.2f}'.format
 
+def run_analysis(filters):
+    # Fetch data from database
+    df = fetch_data(filters)
+    
+    # Preprocess data
+    preprocessor, processed_df = preprocess_data(df)
+    
+    # Run analysis
+    corr_matrix = correlation_matrix(processed_df)
+    loc_plots = location_plots(processed_df)
+    loc_summary = summarize_by_location(processed_df)
+    type_summary = summarize_by_type(processed_df)
+    type_dist = type_distribution(processed_df)
+    
+    # Return analysis
+    return {
+        "corr_matrix": corr_matrix.to_dict(),
+        "loc_plots": loc_plots,
+        "loc_summary": loc_summary.to_dict(),
+        "type_summary": type_summary.to_dict(),
+        "type_dist": type_dist,
+        "clusters_map": preprocessor.clusters_map,
+        "price_heatmap": preprocessor.price_heatmap
+    } 
+
+def fetch_data(filters):
+    try:
+        response = requests.post(f"http://api:8000/properties/filter", timeout=10, json=filters)
+        response.raise_for_status() 
+        data = response.json()
+
+        # Convert to dataframe
+        df = pd.DataFrame(data)
+        
+        # Return dataframe
+        return df
+        
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return None
+
 def preprocess_data(df):
-    preprocessor = ModelPreprocessor()
+    preprocessor = Preprocessor()
     processed_df = preprocessor.process_df(df)
-    return processed_df
+    return preprocessor, processed_df
 
+def fig_to_base64(fig):
+    """Convert a Matplotlib figure to a Base64-encoded string."""
+    img_io = io.BytesIO()
+    fig.savefig(img_io, format='png', bbox_inches='tight')
+    img_io.seek(0)
+    base64_img = base64.b64encode(img_io.getvalue()).decode()
+    plt.close(fig)
+    return base64_img
 
-def correlation_matrix(df, show=True):
+def correlation_matrix(df, show=False):
     corr_matrix = df.corr()
     if show:
         sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
         plt.title("Correlation Matrix")
         plt.show()
+        
     return corr_matrix
 
 def location_plots(df):
@@ -40,7 +93,7 @@ def location_plots(df):
 
     plt.tight_layout()
 
-    return fig
+    return fig_to_base64(fig)
 
 def summarize_by_type(df):
     """ Create a summary by type table. """
@@ -67,7 +120,7 @@ def type_distribution(df):
     fig, ax = plt.subplots(figsize=(4, 3))
     ax.pie(type_counts, labels=type_counts.index, autopct='%1.1f%%', startangle=90)
     ax.set_title('Type Distribution')
-    return fig
+    return fig_to_base64(fig)
 
 def summarize_by_location(df):
     """ Create a simplified summary by location. """

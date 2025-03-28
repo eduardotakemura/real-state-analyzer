@@ -10,7 +10,7 @@ import folium
 from folium.plugins import HeatMap
 pd.options.display.float_format = '{:,.2f}'.format
 
-class ModelPreprocessor:
+class Preprocessor:
     def __init__(self):
         self.data = None
         self.current_operation = None

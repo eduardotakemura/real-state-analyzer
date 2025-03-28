@@ -1,59 +1,8 @@
 import pika
-import pandas as pd
-from utils import correlation_matrix, location_plots, summarize_by_location, summarize_by_type, type_distribution, preprocess_data
-import requests
+from analysis import run_analysis
 import json
 import time
 from pika.exceptions import AMQPConnectionError
-
-def run_analysis(filters):
-    # Fetch data from database
-    df = _fetch_data(filters)
-    
-    # Preprocess data
-    processed_df = preprocess_data(df)
-    
-    # Run analysis
-    corr_matrix = correlation_matrix(processed_df)
-    loc_plots = location_plots(processed_df)
-    loc_summary = summarize_by_location(processed_df)
-    type_summary = summarize_by_type(processed_df)
-    type_dist = type_distribution(processed_df)
-    
-    # Return analysis
-    return _format_response(corr_matrix, loc_plots, loc_summary, type_summary, type_dist)
-
-def _fetch_data(filters):
-    try:
-        response = requests.post(f"http://api:8000/properties/filter", timeout=10, json=filters)
-        response.raise_for_status() 
-        data = response.json()
-        print(len(data))
-        
-        # Convert to dataframe
-        df = pd.DataFrame(data)
-        print(df.head())
-        print(df.columns)
-        
-        # Return dataframe
-        return df
-        
-    except Exception as e:
-        print(f"Error fetching data: {e}")
-        return None
-
-    
-def _format_response(corr_matrix, loc_plots, loc_summary, type_summary, type_dist):
-    response =  {
-        "corr_matrix": corr_matrix,
-        "loc_plots": loc_plots,
-        "loc_summary": loc_summary,
-        "type_summary": type_summary,
-        "type_dist": type_dist
-    }
-    print(response)
-    
-    return response
 
 def create_connection():
     retries = 20
@@ -89,7 +38,6 @@ try:
         print(body)
         # Run analysis
         report = run_analysis(json.loads(body))
-        print(report)
         
         # Send response
         channel.basic_publish(

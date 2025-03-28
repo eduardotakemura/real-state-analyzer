@@ -1,5 +1,4 @@
 from models import Properties
-from fastapi import Response
 from io import StringIO
 import csv
 
