@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./data:/app/data
+    shm_size: 2gb
