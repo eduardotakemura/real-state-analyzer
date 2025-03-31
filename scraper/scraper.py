@@ -51,9 +51,10 @@ class Scraper:
             print("Moving to next page")
 
         self.driver.quit()
-        self._print_summary(start_time, full_file_name)
+        report = self._print_summary(start_time, full_file_name)
         self.scrapped_entries = 0
         self.errors = 0
+        return report
         
     def _initialize_file(self, file_name):
         """ Initialize the output CSV file in the /data \n
@@ -66,7 +67,7 @@ class Scraper:
         full_file_name = os.path.join(data_dir, f'{file_name}.csv')
 
         df = pd.DataFrame(columns=[
-            'id', 'link', 'operation', 'address', 'size',
+            'id', 'link', 'title', 'operation', 'address', 'size',
             'dorms', 'toilets', 'garage', 'price', 'additional_costs'
         ])
         df.to_csv(full_file_name, index=False)
@@ -107,6 +108,7 @@ class Scraper:
     def _extract_card_data(self, card, operation):
         link = self._extract_link(card)
         real_state_id = self._extract_id(card)
+        title = self._extract_title(card)
         address = self._extract_address(card)
         price = self._extract_price(card)
         additional_costs = self._extract_costs(card)
@@ -115,6 +117,7 @@ class Scraper:
         return {
             'id': real_state_id,
             'link': link,
+            'title': title,
             'operation': operation,
             'address': address,
             'size': details['size'],
@@ -134,6 +137,12 @@ class Scraper:
     def _extract_id(self, card):
         try:
             return card.find_element(By.CSS_SELECTOR, 'a[itemprop="url"]').get_attribute('data-id')
+        except:
+            return ''
+
+    def _extract_title(self, card):
+        try:
+            return card.find_element(By.CSS_SELECTOR, '.card__location h2 span:first-of-type').text
         except:
             return ''
 
@@ -201,8 +210,16 @@ class Scraper:
 
     def _print_summary(self, start_time, file_name):
         total_time = round((time.time() - start_time) / 60, 2)
+        report = {
+            'file_name': file_name,
+            'entries_scraped': self.scrapped_entries,
+            'errors': self.errors,
+            'total_time': total_time
+        }
         print(f'Scraping Finished.\n'
-              f'Entries Scraped: {self.scrapped_entries}\n'
-              f'Errors: {self.errors}\n'
-              f'File saved at {file_name}\n'
-              f'Total time: {total_time} minutes')
+        f'Entries Scraped: {self.scrapped_entries}\n'
+        f'Errors: {self.errors}\n'
+        f'File saved at {file_name}\n'
+        f'Total time: {total_time} minutes'
+        )
+        return report
