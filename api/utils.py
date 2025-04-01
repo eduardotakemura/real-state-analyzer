@@ -1,6 +1,7 @@
 from models import Properties
 from io import StringIO
 import csv
+from fastapi import Request
 
 def extract_filters(requested_filters: dict):
     # Initiate filters list #
@@ -105,3 +106,20 @@ def get_scraping_input(input: dict):
     }
 
     return task
+
+async def get_data(request: Request):
+    """Get data from the request and convert it to a list of dictionaries"""
+    data = await request.json()
+    
+    if not isinstance(data, list):
+        raise ValueError("Data must be a list of records")
+    
+    # Validate that each record has the required fields based on Properties model
+    required_fields = [column.name for column in Properties.__table__.columns if column.name != 'id']
+    
+    for record in data:
+        missing_fields = [field for field in required_fields if field not in record]
+        if missing_fields:
+            raise ValueError(f"Missing required fields: {missing_fields}")
+    
+    return data

@@ -56,6 +56,30 @@ def get_error():
     error = Exception('Error route is working!')
     _error_handler(error)
 
+def load_data(db: Session, data: list):
+    try:
+        for record in data:
+            # Check if property with this page_id already exists
+            existing_property = db.query(Properties).filter(
+                Properties.page_id == str(record['page_id'])
+            ).first()
+
+            if existing_property:
+                # Update existing property
+                for key, value in record.items():
+                    setattr(existing_property, key, value)
+            else:
+                # Create new property
+                new_property = Properties(**record)
+                db.add(new_property)
+
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Error loading data: {e}")
+        return False
+
 ## ---------------- Utilities Methods ---------------- ##
 def _error_handler(error: Exception):
     message = 'An error occurred while processing the request'

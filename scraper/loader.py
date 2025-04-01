@@ -16,7 +16,13 @@ class Loader:
 
     def _make_request(self):
         try:
-            response = requests.post(self.api_url, json=self.df.to_dict(orient="records"))
+            # Rename id col to page_id
+            df = self.df.rename(columns={'id': 'page_id'})
+
+            # Convert DataFrame to list of dictionaries
+            data_list = df.to_dict(orient="records")
+            # Send the list directly as the JSON payload
+            response = requests.post(self.api_url, json=data_list)
             response.raise_for_status()
             result = response.json()
 
