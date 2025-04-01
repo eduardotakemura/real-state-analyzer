@@ -13,7 +13,7 @@ class Scraper:
         self.scroll_delay = 8
         self.ref_cols = [
             'id', 'link', 'title', 'operation', 'address', 'size',
-            'dorms', 'toilets', 'garage', 'price', 'additional_costs'
+            'dorms', 'toilets', 'garage', 'price', 'additional_costs', 'scraping_date'
         ]
 
     def start(self, url, pages, file_name, operation):
@@ -120,6 +120,9 @@ class Scraper:
         # Initialize data as df #
         new_data_df = pd.DataFrame(data)
 
+        # Append scraping date
+        new_data_df['scraping_date'] = self.script_date
+
         # Open existent file #
         existing_df = pd.read_csv(file_name)
 
@@ -133,7 +136,6 @@ class Scraper:
         print("Scrolling down...")
         try:
             for i in range(5):
-                print(f"Scroll {i+1}")
                 navbar = self.driver.find_elements(By.CSS_SELECTOR, 'nav[data-testid="l-pagination"].l-pagination')
                 self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", navbar[0])
                 time.sleep(self.scroll_delay)
@@ -216,15 +218,35 @@ class Scraper:
         }
 
     def _go_to_next_page(self):
-        """ Find and click the next page button """
-        try:
-            print("Trying to find next page button")
-            pagination_button = self.driver.find_elements(By.CSS_SELECTOR, '[data-testid="next-page"]')
-            pagination_button[0].click()
-            return True
+        """ Find and click the next page button with retry logic """
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                pagination_button = self.driver.find_elements(By.CSS_SELECTOR, '[data-testid="next-page"]')
+                if not pagination_button:
+                    print("No next page button found")
+                    return False
+                
+                # Try different clicking methods
+                try:
+                    # Method 1: Regular click
+                    pagination_button[0].click()
+                except:
+                    try:
+                        # Method 2: JavaScript click
+                        self.driver.execute_script("arguments[0].click();", pagination_button[0])
+                    except:
+                        # Method 3: Scroll into view and click
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", pagination_button[0])
+                        time.sleep(1)  # Give it a moment to scroll
+                        pagination_button[0].click()
+                
+                return True
 
-        except Exception as e:
-            print(f"Error navigating to the next page: {e}")
-            return False
+            except Exception as e:
+                time.sleep(2)  # Wait before retry
+                
+        print("Failed to navigate to next page after all attempts")
+        return False
 
 
