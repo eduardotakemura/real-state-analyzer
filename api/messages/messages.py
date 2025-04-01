@@ -2,7 +2,7 @@ import pika
 import threading
 import time
 from pika.exceptions import AMQPConnectionError
-from .callbacks import analyzer_callback, price_prediction_callback, training_callback, features_cols_callback
+from .callbacks import analyzer_callback, price_prediction_callback, training_callback, features_cols_callback, scraper_callback
 
 ## ---- Listener ---- ##
 def create_connection():
@@ -39,12 +39,14 @@ def message_listener():
         channel.queue_declare(queue='price_prediction_response_queue', durable=True)
         channel.queue_declare(queue='training_response_queue', durable=True)
         channel.queue_declare(queue='features_cols_response_queue', durable=True)
+        channel.queue_declare(queue='scraper_response_queue', durable=True)
 
         # Consume messages
         channel.basic_consume(queue='analyzer_response_queue', on_message_callback=analyzer_callback, auto_ack=True)
         channel.basic_consume(queue='price_prediction_response_queue', on_message_callback=price_prediction_callback, auto_ack=True)
         channel.basic_consume(queue='training_response_queue', on_message_callback=training_callback, auto_ack=True)
         channel.basic_consume(queue='features_cols_response_queue', on_message_callback=features_cols_callback, auto_ack=True)
+        channel.basic_consume(queue='scraper_response_queue', on_message_callback=scraper_callback, auto_ack=True)
         channel.start_consuming()
         
     except Exception as e:

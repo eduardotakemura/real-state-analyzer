@@ -2,9 +2,9 @@ from fastapi import Depends, Request, Path
 from sqlalchemy.orm import Session
 import crud
 from extensions import get_db, app
-from messages.requests import send_analysis_request, send_price_prediction_request, send_training_request, send_features_cols_request
+from messages.requests import send_analysis_request, send_price_prediction_request, send_training_request, send_features_cols_request, send_scraping_request
 from messages.messages import start_listener
-from utils import extract_filters
+from utils import extract_filters, get_scraping_input
 
 ## ---------------- Dependencies Methods ---------------- ##
 async def get_filters(request: Request):
@@ -51,6 +51,14 @@ def request_features_cols():
     request = send_features_cols_request()
     return {"message": f"{request}"}
 
+# Request scraping
+@app.post("/request-scraping")
+def request_scraping(input: dict = Depends(get_scraping_input)):
+    print(f" [*] Requesting scraping for input: {input}")
+    request = send_scraping_request(input)
+    return {"message": f"{request}"}
+
+
 ## ---------------- Properties Routes ---------------- ##
 # Get all properties
 @app.get("/properties")
@@ -75,4 +83,9 @@ def property_by_id(db: Session = Depends(get_db), property_id: int = Path(..., d
 @app.get("/export-properties")
 def export_properties(db: Session = Depends(get_db)):
     return crud.get_export_to_csv(db)
+
+@app.post("/load-data")
+def load_data(data: dict):
+    print(f" [*] Loading data: {data}")
+    #return crud.load_data(data)
 

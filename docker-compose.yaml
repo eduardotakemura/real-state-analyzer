@@ -13,7 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data # Named volume
       - ./properties.sql:/docker-entrypoint-initdb.d/properties.sql
-  ## FASTAPI BACKEND
+
+  ## FASTAPI
   api:
     build:
       context: ./api
@@ -33,6 +34,7 @@ services:
     depends_on:
       - database
       - rabbitmq
+
   ## REACT FRONTEND
   # react:
   #   container_name: react
@@ -52,6 +54,7 @@ services:
   #   tty: true
   #   depends_on:
   #     - api
+
   ## RABBITMQ
   rabbitmq:
     image: 'rabbitmq:management' # RabbitMQ with management plugin (UI for monitoring)
@@ -62,6 +65,7 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+
   ## PRICE PREDICTION MODEL
   price_model:
     build:
@@ -73,16 +77,31 @@ services:
       - ./price_model/data:/app/data # Bind mount to access models
     depends_on:
       - rabbitmq
+
+  ## SCRAPER
+  scraper:
+    container_name: scraper
+    build:
+      context: ./scraper
+      dockerfile: Dockerfile
+    volumes:
+      - ./scraper/data:/app/data # Bind mount to export data
+    shm_size: 2gb
+    depends_on:
+      - rabbitmq
+    env_file:
+      - .env
+
   ## ANALYZER
   analyzer:
     build:
       context: ./analyzer
       dockerfile: Dockerfile
     container_name: analyzer
-    # volumes:
-    #   - ./analyzer:/app
-    #restart: always
     depends_on:
       - rabbitmq
+
+# Named Volumes
 volumes:
   postgres_data:
+  price_model_data:

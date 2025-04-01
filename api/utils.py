@@ -89,4 +89,19 @@ def export_to_csv(properties: list):
     # Return length of the csv file
     return len(csv_string)
     
-    
+def get_scraping_input(input: dict):
+    """Get the scraping input from the filters"""
+    # Check if all fields are present
+    if 'url' not in input or 'pages' not in input or 'file_name' not in input or 'operation' not in input or 'date' not in input or 'tasks' not in input:
+        raise ValueError("Missing required fields in input")
+
+    task = {
+        'url': input['url'],
+        'pages': input['pages'],
+        'file_name': input['file_name'],
+        'operation': input['operation'],
+        'date': input['date'],
+        'tasks': input['tasks']
+    }
+
+    return task

@@ -10,9 +10,13 @@ class Preprocessor:
         self.df = None
         self.api_url = "https://us1.locationiq.com/v1/search"
         self.API_KEY = os.getenv('LOCATION_IQ_API_KEY')
+        self.file_name_saving = None
 
     def preprocess_data(self, file_name):
+        # Load raw data
         self.df = pd.read_csv(file_name)
+
+        # Process data
         self._extract_type()
         self._extract_address()
         self._clean_size()
@@ -23,16 +27,20 @@ class Preprocessor:
         self._clean_links()
         self._initiate_lat_lng()
 
-        splitted_name = file_name.split('.csv')[0]
-        self.save_to_csv(f'{splitted_name}_preprocessed.csv')
+        # Save preprocessed data
+        self.file_name_saving = file_name.split('.csv')[0] + '_preprocessed.csv'
+        self.save_to_csv(self.file_name_saving)
 
-        return self.df
+        return self.file_name_saving
 
-    def include_lat_lng(self, file_name):
+    def get_lat_lng(self, file_name, handle_outliers=False):
+        # Load preprocessed data
         self.df = pd.read_csv(file_name)
 
+        print(f" [*] Getting lat, lng for {file_name}")
         try:
             # Loop through each row
+            api_requests = 0
             for index, row in self.df.iterrows():
                 # Check if lat, lng is already in df
                 if self.df.at[index, 'latitude'] != 0.0 and self.df.at[index, 'longitude'] != 0.0:
@@ -51,18 +59,24 @@ class Preprocessor:
                 # Include lat, lng
                 self.df.at[index, 'latitude'] = float(lat)
                 self.df.at[index, 'longitude'] = float(lng)
+                api_requests += 1
 
         except Exception as e:
             print(f"Error including lat, lng: {e}")
 
+        print(f" [*] API requests: {api_requests}")
+
         # Handle outliers
-        #self.handle_lat_lng_outliers()
+        if handle_outliers:
+            self.handle_lat_lng_outliers()
 
         # Save to csv
-        splitted_name = file_name.split('.csv')[0]
-        self.save_to_csv(f'{splitted_name}_with_lat_lng.csv')
+        self.file_name_saving = file_name.split('.csv')[0] + '_with_lat_lng.csv'
+        self.save_to_csv(self.file_name_saving)
 
-        return self.df
+        print(f" [*] Lat, lng saved to {self.file_name_saving}")
+
+        return self.file_name_saving
 
        
     def _request_lat_lng(self, address):
@@ -76,13 +90,15 @@ class Preprocessor:
             response.raise_for_status()
             lat = response.json()[0]['lat']
             lng = response.json()[0]['lon']
-            print(f"Lat, lng: {lat}, {lng}")
             return lat, lng
         
         except Exception as e:
             print(f"Error requesting lat, lng: {e}")
             return None
-       
+    
+    def save_to_csv(self, file_name):
+        self.df.to_csv(file_name, index=False)
+
     def handle_lat_lng_outliers(self, max_distance_km=20):
         # Compute central point (mean latitude & longitude)
         center_lat = self.df["latitude"].mean()
@@ -212,6 +228,3 @@ class Preprocessor:
       # Initiate lat, lng
       self.df['latitude'] = 0.0
       self.df['longitude'] = 0.0
-
-    def save_to_csv(self, file_name):
-        self.df.to_csv(file_name, index=False)

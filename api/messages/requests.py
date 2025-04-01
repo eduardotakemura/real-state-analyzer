@@ -72,3 +72,22 @@ def send_features_cols_request():
         return f" [x] Sent Features Columns request"
     except Exception as e:
         return f" [!] Error sending features columns request: {e}"
+    
+def send_scraping_request(input: dict): 
+    """Send a message to the RabbitMQ queue for scraping"""
+    try:
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        channel = connection.channel()
+        channel.queue_declare(queue='scraper_queue', durable=True)
+
+        channel.basic_publish(
+            exchange='',
+            routing_key='scraper_queue',
+            body=json.dumps(input),
+            properties=pika.BasicProperties(delivery_mode=2)
+        )
+        connection.close()
+        return f" [x] Sent Scraping request for input:'{input}'"
+    except Exception as e:
+        return f" [!] Error sending scraping request: {e}"
+

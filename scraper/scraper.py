@@ -11,6 +11,10 @@ class Scraper:
         self.errors = 0
         self.new_page_delay = 10
         self.scroll_delay = 8
+        self.ref_cols = [
+            'id', 'link', 'title', 'operation', 'address', 'size',
+            'dorms', 'toilets', 'garage', 'price', 'additional_costs'
+        ]
 
     def start(self, url, pages, file_name, operation):
         """ Main scrapping method.\n
@@ -50,8 +54,13 @@ class Scraper:
                 break
             print("Moving to next page")
 
+        # Close driver
         self.driver.quit()
-        report = self._print_summary(start_time, full_file_name)
+
+        # Get summary   
+        report = self._get_summary(start_time, full_file_name)
+
+        # Reset counters
         self.scrapped_entries = 0
         self.errors = 0
         return report
@@ -66,10 +75,7 @@ class Scraper:
 
         full_file_name = os.path.join(data_dir, f'{file_name}.csv')
 
-        df = pd.DataFrame(columns=[
-            'id', 'link', 'title', 'operation', 'address', 'size',
-            'dorms', 'toilets', 'garage', 'price', 'additional_costs'
-        ])
+        df = pd.DataFrame(columns=self.ref_cols)
         df.to_csv(full_file_name, index=False)
         print(f'File initialized at {full_file_name}')
         return full_file_name
@@ -93,6 +99,35 @@ class Scraper:
                 self.errors += 1
 
         return all_cards
+
+    def _get_summary(self, start_time, file_name):
+        total_time = round((time.time() - start_time) / 60, 2)
+        report = {
+            'file_name': file_name,
+            'entries_scraped': self.scrapped_entries,
+            'errors': self.errors,
+            'total_time': total_time
+        }
+        print(f'Scraping Finished.\n'
+        f'Entries Scraped: {self.scrapped_entries}\n'
+        f'Errors: {self.errors}\n'
+        f'File saved at {file_name}\n'
+        f'Total time: {total_time} minutes'
+        )
+        return report
+
+    def _save_data(self, file_name, data):
+        # Initialize data as df #
+        new_data_df = pd.DataFrame(data)
+
+        # Open existent file #
+        existing_df = pd.read_csv(file_name)
+
+        # Append new data to existent one #
+        updated_df = pd.concat([existing_df, new_data_df], ignore_index=True)
+
+        # Overwrite existent file #
+        updated_df.to_csv(file_name, index=False)
 
     def _scroll_down(self):
         print("Scrolling down...")
@@ -180,22 +215,6 @@ class Scraper:
             "garage":garage
         }
 
-    def _save_data(self, file_name, data):
-        # Initialize data as df #
-        new_data_df = pd.DataFrame(data)
-
-        # Open existent file #
-        existing_df = pd.read_csv(file_name)
-
-        # Append new data to existent one #
-        updated_df = pd.concat([existing_df, new_data_df], ignore_index=True)
-        
-        # Display df length (num of rows)
-        print(f'Current data length: {len(updated_df)}')
-
-        # Overwrite existent file #
-        updated_df.to_csv(file_name, index=False)
-
     def _go_to_next_page(self):
         """ Find and click the next page button """
         try:
@@ -208,18 +227,4 @@ class Scraper:
             print(f"Error navigating to the next page: {e}")
             return False
 
-    def _print_summary(self, start_time, file_name):
-        total_time = round((time.time() - start_time) / 60, 2)
-        report = {
-            'file_name': file_name,
-            'entries_scraped': self.scrapped_entries,
-            'errors': self.errors,
-            'total_time': total_time
-        }
-        print(f'Scraping Finished.\n'
-        f'Entries Scraped: {self.scrapped_entries}\n'
-        f'Errors: {self.errors}\n'
-        f'File saved at {file_name}\n'
-        f'Total time: {total_time} minutes'
-        )
-        return report
+

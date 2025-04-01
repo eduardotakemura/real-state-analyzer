@@ -5,4 +5,4 @@ set -e
 Xvfb :99 -ac &
 
 # Run the scraper script
-python /app/main.py
+python -u /app/main.py
