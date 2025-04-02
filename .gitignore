@@ -8,5 +8,6 @@ __pycache__
 *.pywz
 *.pyzw
 node_modules
-properties.sql
 .dockerignore
+*.csv
+*.sql

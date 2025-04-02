@@ -21,9 +21,6 @@ def extract_filters(requested_filters: dict):
     if 'type' in requested_filters and requested_filters['type'] not in (None, '', 'All'):
         filters['type'] = requested_filters['type']
     
-    if 'state' in requested_filters and requested_filters['state']:
-        filters['state'] = requested_filters['state']
-    
     if 'city' in requested_filters and requested_filters['city']:
         filters['city'] = requested_filters['city']
     

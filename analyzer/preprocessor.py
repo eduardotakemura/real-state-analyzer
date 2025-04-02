@@ -2,13 +2,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import seaborn as sns
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
 import folium
 from folium.plugins import HeatMap
-pd.options.display.float_format = '{:,.2f}'.format
 
 class Preprocessor:
     def __init__(self):
@@ -37,7 +35,7 @@ class Preprocessor:
         # Drop unnecessary features #
         self.data = self.drop_unrelevant(df)
 
-        # Map type feature: Apartaments = 1, Houses = 0 #
+        # Map types #
         self.data = self.map_types(self.data)
 
         # Location Clustering #
@@ -57,12 +55,6 @@ class Preprocessor:
         # Drop lat/lng features #
         self.data.drop(columns=['latitude', 'longitude'], inplace=True)
 
-        # Split features #
-        self.data = self.split_features_col(self.data)
-
-        # Drop low correlation features #
-        self.data = self.drop_low_correlation_features(self.data, self.target, self.split_threshold)
-
         # Add price/sqm as feature #
         self.data = self.add_price_per_sqm(self.data)
 
@@ -76,13 +68,38 @@ class Preprocessor:
         return operations[0]
 
     def drop_unrelevant(self, df):
-        features_to_drop = ['id', 'link', 'title', 'operation', 'address', 'street', 'neighborhood', 'city', 'state',
+        features_to_drop = ['id', 'link', 'operation', 'street', 'neighborhood', 'city',
                             'page_id', 'scrapping_date']
         df = df.drop(features_to_drop, axis=1)
         return df
 
     def map_types(self, df):
-        df['type'] = df['type'].map({'Apartamento': 1, 'Casa': 0})
+        # Casa = 0, Apartamento = 1, Terreno = 2, Comercial = 3, Fazenda = 4, Outros = 5
+        type_map = {
+            'Casa': 0,
+            'Apartamento': 1,
+            'Casa de Condomínio': 0,
+            'Cobertura': 1,
+            'Flat': 1,
+            'Kitnet/Conjugado': 1,
+            'Lote/Terreno': 2,
+            'Sobrado': 0,
+            'Edifício Residencial': 3,
+            'Fazenda/Sítios/Chácaras': 4,
+            'Consultório': 3,
+            'Galpão/Depósito/Armazém': 3,
+            'Imóvel Comercial': 3,
+            'Lote/Terreno': 2,
+            'Ponto Comercial/Loja/Box': 3,
+            'Sala/Conjunto': 3,
+            'Prédio/Edifício Inteiro': 3,
+        }
+
+        # Map types #
+        df['type'] = df['type'].map(type_map)
+
+        # Fill NaN with 5 = not defined maps
+        df['type'] = df['type'].fillna(5)
         return df
 
     def drop_location_outliers(self, df, distance_radius=None):
@@ -183,37 +200,6 @@ class Preprocessor:
         plt.ylabel('Longitude')
         plt.title('Result Clustering')
         plt.show()
-
-    def split_features_col(self, df):
-        df['feature_list'] = df['features'].apply(
-            lambda x: [feature.strip() for feature in x.split(',')] if pd.notna(x) else [])
-
-        unique_features = set(feature for sublist in df['feature_list'] for feature in sublist)
-
-        for feature in unique_features:
-            df[feature] = df['feature_list'].apply(lambda x: 1 if feature in x else 0)
-
-        df.drop(columns=['feature_list', 'features'], inplace=True)
-
-        return df
-
-    def drop_low_correlation_features(self, df, target_col='price', threshold=0.05):
-        ref_cols = ['size', 'dorms', 'toilets', 'garage', 'price', 'additional_costs', 'type', 'location']
-        cols_to_drop = [col for col in df.columns if col not in ref_cols]
-
-        # Calculate correlation matrix
-        corr_matrix = df.corr()
-
-        # Extract correlations with the target variable
-        corr_with_target = corr_matrix[target_col]
-
-        # Filter features based on the correlation threshold
-        low_corr_features = corr_with_target[cols_to_drop][abs(corr_with_target[cols_to_drop]) < threshold].index
-
-        # Drop low correlation features
-        df = df.drop(columns=low_corr_features)
-
-        return df
 
     def _create_clusters_map(self, df):
         """Create a folium map with observation points, highlighting clusters, and save it."""
