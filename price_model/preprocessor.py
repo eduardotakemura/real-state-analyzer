@@ -1,19 +1,11 @@
-import pandas as pd
 import geohash
+from scipy.stats.mstats import winsorize
 
 class Preprocessor:
     def __init__(self):
         self.data = None
         self.current_operation = None
         self.geohash_precision = 8
-        self.target = 'price'
-        self.split_threshold = 0.05
-        self.drop_outliers = True
-        self.outliers_config = {
-            'multiplier': 1.5,
-            'Q1': 0.25,
-            'Q3': 0.85
-        }
 
     def process_df(self, df):
         """ Full pipeline to process the data. """
@@ -23,14 +15,11 @@ class Preprocessor:
         # Drop unnecessary features #
         self.data = self.drop_unrelevant(df)
 
-        # Map type feature: Apartaments = 1, Houses = 0 #
+        # Drop Empty Lat,Lng #
+        self.data = self.drop_empty_loc(self.data)
+
+        # Map type feature #
         self.data = self.map_types(self.data)
-
-        # Split features #
-        self.data = self.split_features_col(self.data)
-
-        # Drop low correlation features #
-        self.data = self.drop_low_correlation_features(self.data, self.target, self.split_threshold)
 
         # Remove outliers #
         self.data = self.remove_outliers(self.data, self.drop_outliers)
@@ -45,13 +34,44 @@ class Preprocessor:
         return operations[0]
 
     def drop_unrelevant(self, df):
-        features_to_drop = ['id', 'link', 'title', 'operation', 'address', 'street', 'neighborhood', 'city', 'state',
-                            'page_id', 'scrapping_date']
+        features_to_drop = ['id', 'link', 'operation', 'street', 'neighborhood', 'city','page_id', 'scraping_date']
         df = df.drop(features_to_drop, axis=1)
         return df
 
+    def drop_empty_loc(self, df):
+        df = df[df['latitude'] != 0.0]
+        df = df[df['longitude'] != 0.0]
+        return df
+
     def map_types(self, df):
-        df['type'] = df['type'].map({'Apartamento': 1, 'Casa': 0})
+        # Casa = 0, Apartamento = 1, Terreno = 2, Comercial = 3, Fazenda = 4, Outros = 5
+        type_map = {
+            'Casa': 0,
+            'Apartamento': 1,
+            'Casa de Condomínio': 0,
+            'Cobertura': 1,
+            'Flat': 1,
+            'Kitnet/Conjugado': 1,
+            'Lote/Terreno': 2,
+            'Sobrado': 0,
+            'Edifício Residencial': 3,
+            'Fazenda/Sítios/Chácaras': 4,
+            'Consultório': 3,
+            'Galpão/Depósito/Armazém': 3,
+            'Imóvel Comercial': 3,
+            'Lote/Terreno': 2,
+            'Ponto Comercial/Loja/Box': 3,
+            'Sala/Conjunto': 3,
+            'Prédio/Edifício Inteiro': 3,
+        }
+        df['type'] = df['type'].map(type_map)
+
+        # Fill NaN with 5 = not defined maps
+        df['type'] = df['type'].fillna(5)
+
+        # Cast to int
+        df['type'] = df['type'].astype(int)
+
         return df
 
     def geohash_location(self, df, precision):
@@ -59,48 +79,8 @@ class Preprocessor:
         df.drop(['latitude', 'longitude'], axis=1, inplace=True)
         return df
 
-
-    def split_features_col(self, df):
-        df['feature_list'] = df['features'].apply(
-            lambda x: [feature.strip() for feature in x.split(',')] if pd.notna(x) else [])
-
-        unique_features = set(feature for sublist in df['feature_list'] for feature in sublist)
-
-        for feature in unique_features:
-            df[feature] = df['feature_list'].apply(lambda x: 1 if feature in x else 0)
-
-        df.drop(columns=['feature_list', 'features'], inplace=True)
-
+    def remove_outliers(self, df):
+        for col in df.select_dtypes(include=['number']).columns:
+            df[col] = winsorize(df[col], limits=[0.05, 0.05])
+        
         return df
-
-    def drop_low_correlation_features(self, df, target_col='price', threshold=0.05):
-        ref_cols = ['size', 'dorms', 'toilets', 'garage', 'price', 'additional_costs', 'type', 'latitude','longitude']
-        cols_to_drop = [col for col in df.columns if col not in ref_cols]
-
-        # Calculate correlation matrix
-        corr_matrix = df.corr()
-
-        # Extract correlations with the target variable
-        corr_with_target = corr_matrix[target_col]
-
-        # Filter features based on the correlation threshold
-        low_corr_features = corr_with_target[cols_to_drop][abs(corr_with_target[cols_to_drop]) < threshold].index
-
-        # Drop low correlation features
-        df = df.drop(columns=low_corr_features)
-
-        return df
-
-    def remove_outliers(self, df, drop_outliers):
-        if not drop_outliers:
-            return df
-
-        df = df.copy()
-        Q1 = df.quantile(self.outliers_config['Q1'])
-        Q3 = df.quantile(self.outliers_config['Q3'])
-        IQR = Q3 - Q1
-        lower_bound = Q1 - self.outliers_config['multiplier'] * IQR
-        upper_bound = Q3 + self.outliers_config['multiplier'] * IQR
-
-        return df[~((df < lower_bound) | (df > upper_bound)).any(axis=1)]
-

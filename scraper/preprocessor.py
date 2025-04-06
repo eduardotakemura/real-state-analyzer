@@ -94,7 +94,7 @@ class Preprocessor:
         
         except Exception as e:
             print(f"Error requesting lat, lng: {e}")
-            return None
+            return None, None
     
     def save_to_csv(self, file_name):
         self.df.to_csv(file_name, index=False)

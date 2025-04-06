@@ -37,7 +37,7 @@ def send_price_prediction_request(input: dict):
     except Exception as e:
         return f" [!] Error sending price prediction request: {e}"
 
-def send_training_request():
+def send_training_request(operation: str):
     """Send a message to the RabbitMQ queue for training"""
     try:
         connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
@@ -47,7 +47,7 @@ def send_training_request():
         channel.basic_publish(
             exchange='',
             routing_key='training_queue',   
-            body=json.dumps({}),
+            body=json.dumps({"operation": operation}),
             properties=pika.BasicProperties(delivery_mode=2)    
         )
         connection.close()

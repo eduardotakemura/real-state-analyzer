@@ -1,6 +1,7 @@
-# Real Estate Analyzer - Microservices Architecture
+# Real Estate Analyzer
 
-A sophisticated real estate analysis platform built using a microservices architecture, designed to scrape, analyze, and predict property prices while providing insights through an interactive web interface.
+Multi container app that scrap data from web pages, extract insights from the data, elaborate reports and predict real estate prices.  
+(Hosted demo app available soon)
 
 ## 🏗️ Architecture Overview
 
@@ -17,72 +18,73 @@ The project is built using a modern microservices architecture with Docker conta
 
 ### System Architecture Diagram
 
-```
-┌─────────────┐     ┌─────────────┐
-│   React     │────▶│   FastAPI   │
-│  Frontend   │◀────│  Backend    │
-└─────────────┘     └──────┬──────┘
-                           │
-                    ┌──────┴──────┐
-                    │  PostgreSQL  │
-                    │  Database    │
-                    └──────┬──────┘
-                           │
-                    ┌──────┴──────┐
-                    │   RabbitMQ  │
-                    │   Broker    │
-                    └──────┬──────┘
-                           │
-     ┌──────────────┬─────┴────┬──────────────┐
-     ▼              ▼          ▼              ▼
-┌──────────┐  ┌──────────┐ ┌────────┐  ┌──────────┐
-│ Scraper  │  │  Price   │ │  Data  │  │ Analysis │
-│ Service  │  │  Model   │ │  API   │  │ Service  │
-└──────────┘  └──────────┘ └────────┘  └──────────┘
-```
+![architecture diagram](architecture.png)
 
-## 🚀 Features
+## 🚀 How It Works
 
-- **Real-time Property Data Collection**
-  - Automated web scraping of property listings
-  - Real-time data processing and storage
-  - Robust error handling and retry mechanisms
+- **FastAPI – The Project's Central Hub**
+  - Acts as the core that connects all microservices  
+  - Serves data to the frontend  
+  - Dispatches tasks to microservices via RabbitMQ  
+  - Serves as the single access point to the database  
 
-- **Advanced Price Prediction**
-  - Machine learning-based price prediction model
-  - Historical price trend analysis
-  - Feature importance analysis
+- **React Frontend – Modern & Responsive UX**
+  - Subscribes to real-time updates via webhooks  
+  - Offers a responsive dashboard with dynamic queue updates  
 
-- **Data Analysis and Insights**
-  - Property market trends analysis
-  - Neighborhood statistics
-  - Investment opportunity identification
+- **PostgreSQL – Scalable & Reliable Database**
+  - Open-source, robust, and scalable relational database solution  
 
-- **Interactive Web Interface**
-  - Real-time property search and filtering
-  - Interactive data visualizations
-  - User-friendly dashboard
+- **RabbitMQ – Asynchronous Message Broker**
+  - Reliable message queue system to handle multiple asynchronous requests across services  
+
+- **ETL Pipeline – Extract, Transform, Load for Insightful Data**
+  - Extracts (scrapes) data from real estate websites  
+  - Preprocesses raw data (cleansing and normalization)  
+  - Enhances data with additional features (e.g., latitude and longitude)  
+  - Loads processed data into the database  
+
+- **Price Prediction Model – Intelligent Price Estimation**
+  - Deep learning-based ANN model for training and inference  
+  - Predicts property prices based on up-to-date data  
+
+- **Data Analyzer – Insight Generation from Data**
+  - Includes tools for exploratory data analysis  
+  - Generates visualizations like heatmaps, summary tables, and cluster maps
 
 ## 💻 Technology Stack
 
 - **Frontend**:
   - React
-  - Modern UI/UX design
-  - Interactive data visualization libraries
+  - Nginx serving
 
-- **Backend**:
+- **API**:
   - FastAPI (Python)
-  - PostgreSQL
   - SQLAlchemy ORM
+
+- **Storage**:
+  - PostgreSQL (Database)
+  - Pickle (Models)
+  - csv (Temp data)
+
+- **Web Scraping/Automation**:
+  - Selenium
+  - Beautiful Soup
 
 - **Message Queue**:
   - RabbitMQ for asynchronous communication
   - Event-driven architecture
 
-- **Machine Learning**:
-  - Python-based ML pipeline
+- **Deep Learning**:
+  - Python-based pipeline
+  - TensorFlow/Keras
+
+- **Data Analysis**:
+  - Pandas
+  - Numpy
   - Scikit-learn
-  - Data processing utilities
+  - Matplotlib
+  - Folium
 
 - **Infrastructure**:
   - Docker containerization
@@ -97,14 +99,22 @@ The project is built using a modern microservices architecture with Docker conta
 
 2. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/eduardotakemura/real-state-analyzer.git
    cd real-estate-analyzer
    ```
 
 3. **Environment Setup**:
    ```bash
-   cp .env.example .env
-   # Configure your environment variables in .env
+   cp .env
+   # Configure your environment variables in .env such as:
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_USER=postgres
+    DB_PASSWORD=postgres
+    DB_NAME=real_estate_db
+    RABBITMQ_DEFAULT_USER=guest
+    RABBITMQ_DEFAULT_PASS=guest
+    LOCATION_IQ_API_KEY=<your locationIQ api key> # Register your API key for free in https://my.locationiq.com/register, we're limited to 5000/request day
    ```
 
 4. **Launch the application**:
@@ -121,27 +131,13 @@ The project is built using a modern microservices architecture with Docker conta
 
 The system uses an event-driven architecture with RabbitMQ:
 
-1. **Scraper Service** → publishes raw property data
-2. **Analysis Service** → processes and enriches data
-3. **Price Model Service** → generates price predictions
-4. **API Service** → aggregates and serves data to frontend
-
-## 📊 Data Flow
-
-1. Property data is collected by the scraper service
-2. Raw data is published to RabbitMQ
-3. Analysis service processes and enriches the data
-4. Price prediction model generates valuations
-5. Processed data is stored in PostgreSQL
-6. API serves data to the frontend application
-
-## 🔐 Security
-
-- Containerized services for isolation
-- Environment-based configuration
-- Secure database access
-- API rate limiting
-- Input validation and sanitization
+1. **Scraper Service** → receive task, run ETL script and query API to load data into the database, publish success message
+2. **Analysis Service** → receive task, fetch dataset from API and publish results
+3. **Price Model Service (Training)** → receive task, fetch data from API, run training pipeline and store models in .pkl format, publish results
+4. **Price Model Service (Prediction)** → receive task, load models.pkl and run inference, publish results
+5. **API Service** → serves data to frontend, single access point to database, and push services tasks to queue
+6. **Database Service** → accessible only through API
+7. **Frontend Service** → query API through HTTP requests, subscribe to results through web-hooks
 
 ## 📝 API Documentation
 
@@ -158,10 +154,10 @@ Each service is containerized and managed via Docker Compose:
 
 - `database`: PostgreSQL database
 - `api`: FastAPI backend service
-- `react`: Frontend application
+- `react`: React frontend application
 - `rabbitmq`: Message broker
 - `price_model`: Price prediction service
-- `scraper`: Data collection service
+- `scraper`: Web scraper service
 - `analyzer`: Data analysis service
 
 ## 📈 Scaling

@@ -1,25 +1,21 @@
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Embedding, Flatten, Concatenate
 from tensorflow.keras.models import Model
 import pickle
 import geohash
-
-sns.set()
-pd.options.display.float_format = '{:,.2f}'.format
+import os
 
 class PriceModel:
     def __init__(self):
         self.df = None
+        self.operation = None
         self.dataset = None
         self.additional_dataset = None
+        self.embedding_vector_size = 10
         self.test_size = 0.2
         self.valid_size = 0.2
         self.ann_epochs = 100
@@ -39,16 +35,15 @@ class PriceModel:
         self.features_scaler = None
         self.target_scaler = None
         self.label_encoder = None
-        self.base_columns = ['size', 'dorms', 'toilets', 'garage', 'additional_costs', 'type', 'price', 'location']
-        self.extra_features_cols = None
         self.training_cols = None
         self.additional_training_cols = None
         
 
-    def models_training(self, df):
+    def models_training(self, df, operation):
         # Load reference dataframe
         self.df = df.copy()
-        
+        self.operation = operation
+
         # Preprocess and split datasets #
         self.preprocess_data()
 
@@ -63,7 +58,7 @@ class PriceModel:
             self.df.drop(columns=['additional_costs','price']),
             self.df['additional_costs']
             )
-
+        
         # Train price predictor ANN #
         self.price_model = self.train_ann(self.training_cols, self.dataset)
 
@@ -80,8 +75,8 @@ class PriceModel:
         # Standardize numeric features #
         self.standardize_features()
 
-        # Save extra columns to be used in custom predictions #
-        self.extra_features_cols = [col for col in self.df.columns if col not in self.base_columns]
+        # Hot encode type col #
+        self.encode_types()
 
     def convert_geohash(self):
         self.label_encoder = LabelEncoder()
@@ -92,11 +87,24 @@ class PriceModel:
         """Standardizes the numeric features in the DataFrame."""
         self.features_scaler = StandardScaler()
         self.target_scaler = StandardScaler()
-        features_to_standardize = ['size', 'dorms', 'toilets', 'garage', 'additional_costs', 'location']
+        features_to_standardize = ['size', 'dorms', 'toilets', 'garage', 'additional_costs']
 
         # Fit and transform the numeric features
         self.df[features_to_standardize] = self.features_scaler.fit_transform(self.df[features_to_standardize])
         self.df['price'] = self.target_scaler.fit_transform(self.df[['price']])
+
+
+    def encode_types(self):
+        """One-hot encodes the 'type' column in the DataFrame."""
+        # Get dummies
+        type_dummies = pd.get_dummies(self.df['type'], prefix='type', drop_first=False)
+
+        # Map to 0 and 1
+        type_dummies = type_dummies.map(lambda x: 1 if x > 0 else 0)
+
+        # Update df
+        self.df = pd.concat([self.df, type_dummies], axis=1)
+        self.df.drop(['type'], axis=1, inplace=True)
 
     def split_data(self, X, y):
         training_cols = X.columns
@@ -109,17 +117,16 @@ class PriceModel:
 
         return {'X_train': X_train, 'X_valid':X_valid, 'X_test':X_test, 'y_train':y_train, 'y_valid':y_valid, 'y_test':y_test}, training_cols
 
-
     def train_ann(self, training_cols, dataset):
         """Trains an Artificial Neural Network with geohash embeddings."""
         # Inputs
         geohash_input = Input(shape=(1,), name="geohash")
-        numeric_inputs = Input(shape=(len(training_cols)-1,), name="numeric_features")  # Size, dorms, toilets, garage
+        numeric_inputs = Input(shape=(len(training_cols)-1,), name="numeric_features")  # Excluding geohash
 
         # Geohash Embedding
         geohash_emb = Embedding(
             input_dim=len(self.label_encoder.classes_),  # Unique geohashes
-            output_dim=10  # Embedding vector size
+            output_dim= self.embedding_vector_size
         )(geohash_input)
         geohash_emb = Flatten()(geohash_emb)
 
@@ -159,52 +166,51 @@ class PriceModel:
 
     def save_models(self):
       """Saves trained models, encoders, and column info."""
-      with open('data/price_model.pkl', 'wb') as file:
+      # Initiate directories
+      base_dir = f'data/{self.operation}'
+      if not os.path.exists(base_dir):
+          os.makedirs(base_dir)
+
+      with open(f'{base_dir}/price_model.pkl', 'wb') as file:
           pickle.dump(self.price_model, file)
 
-      with open('data/additional_model.pkl', 'wb') as file:
+      with open(f'{base_dir}/additional_model.pkl', 'wb') as file:
           pickle.dump(self.additional_model, file)
 
-      with open('data/encoders.pkl', 'wb') as file:
+      with open(f'{base_dir}/encoders.pkl', 'wb') as file:
           pickle.dump({
               'label_encoder': self.label_encoder,
               'features_scaler': self.features_scaler,
               'target_scaler': self.target_scaler
           }, file)
 
-      with open('data/columns.pkl', 'wb') as file:
-          pickle.dump({
-              'extra_features_cols': self.extra_features_cols,
-              'training_cols': self.training_cols,
-              'additional_training_cols': self.additional_training_cols
-          }, file)
 
     def load_models(self):
         try:
             """Loads trained models, encoders, and column info."""
-            with open('data/price_model.pkl', 'rb') as file:
+            base_dir = f'data/{self.operation}'
+            if not os.path.exists(base_dir):
+                return 'Directory not found'
+
+            with open(f'{base_dir}/price_model.pkl', 'rb') as file:
                 self.price_model = pickle.load(file)
 
-            with open('data/additional_model.pkl', 'rb') as file:
+            with open(f'{base_dir}/additional_model.pkl', 'rb') as file:
                 self.additional_model = pickle.load(file)
 
-            with open('data/encoders.pkl', 'rb') as file:
+            with open(f'{base_dir}/encoders.pkl', 'rb') as file:
                 encoders = pickle.load(file)
                 self.label_encoder = encoders['label_encoder']
                 self.features_scaler = encoders['features_scaler']
                 self.target_scaler = encoders['target_scaler']
 
-            with open('data/columns.pkl', 'rb') as file:
-                columns = pickle.load(file)
-                self.extra_features_cols = columns['extra_features_cols']
-                self.training_cols = columns['training_cols']
-                self.additional_training_cols = columns['additional_training_cols']
-
         except Exception as e:
+            print(f"Error loading models: {e}")
             return 'Error in loading models'
 
     def make_prediction(self, input_data):
         """Makes a prediction based on input data."""
+        # Load models
         if self.price_model is None or self.additional_model is None:
           print('Loading models...')
           try:
@@ -229,78 +235,50 @@ class PriceModel:
         location_encoded = encode_location(geohash_code)
         
         # Create feature arrays for additional costs prediction
-        additional_features = {
-            'size': input_data['size'],
-            'dorms': input_data['dorms'],
-            'toilets': input_data['toilets'],
-            'garage': input_data['garage'],
-            'additional_costs': 0, # Initial dummy value
-            'type': input_data['type'],
-            'location': location_encoded
-        }
-        
-        # Standardize numeric features for additional costs prediction
-        additional_numeric_array = np.array([[
-            additional_features['size'],
-            additional_features['dorms'],
-            additional_features['toilets'],
-            additional_features['garage'],
-            additional_features['additional_costs'],
-            additional_features['location']
+        additional_features = np.array([[
+            input_data['size'],
+            input_data['dorms'],
+            input_data['toilets'],
+            input_data['garage'],  
+            0, # Initial dummy value
         ]])
-        additional_numeric_scaled = self.features_scaler.transform(additional_numeric_array)
-        type_feature = np.array([[additional_features['type']]])
-        binary_features = np.array(input_data['features']).reshape(1, -1)
         
-        # Combine standardized numeric features with binary features
+        # Standardize numeric features
+        additional_numeric_scaled = self.features_scaler.transform(additional_features)
+
+        # Reshape types list
+        types_feature = np.array(input_data['type']).reshape(1, -1)
+        
+        # Combine features into array
         additional_features_array = np.concatenate([
-            additional_numeric_scaled[:, :-2],  # all except location and additional costs
-            type_feature,
-            binary_features,
+            additional_numeric_scaled[:, :-1],  # all except additional costs
+            types_feature
         ], axis=1)
-     
+       
         # Predict additional costs
         additional_costs_pred = self.additional_model.predict([
-            additional_numeric_scaled[:, -1],  # location
-            additional_features_array  # other features including binary ones
+            np.array([[location_encoded]]), # location = Embedding
+            additional_features_array # features
         ])
-
-        print(f"additional cost pred: {additional_costs_pred[0][0]}")
       
         # Create feature arrays for price prediction (including predicted additional costs)
-        price_features = additional_features.copy()
-        price_features['additional_costs'] = additional_costs_pred[0][0]
-        
-        # Standardize numeric features for price prediction
-        price_numeric_array = np.array([[
-            price_features['size'],
-            price_features['dorms'],
-            price_features['toilets'],
-            price_features['garage'],
-            price_features['additional_costs'],
-            price_features['location']
-        ]])
-        price_numeric_scaled = self.features_scaler.transform(price_numeric_array)
-        
-        # Combine standardized numeric features with binary features
         price_features_array = np.concatenate([
-            price_numeric_scaled[:, :-1],  # all except location
-            type_feature,
-            binary_features
+            additional_numeric_scaled[:, :-1], 
+            np.array([[additional_costs_pred[0][0]]]),
+            types_feature
         ], axis=1)
         
         # Predict price
         price_pred = self.price_model.predict([
-            price_numeric_scaled[:, -1],  # location
-            price_features_array  # other features including binary ones
+            np.array([[location_encoded]]),
+            price_features_array
         ])
         
-        # Inverse transform the predictions to get actual values
+        # Inverse transform both predictions
         price_pred_original = self.target_scaler.inverse_transform(price_pred)[0][0]
+        additional_cost_original = self.features_scaler.inverse_transform([[0,0,0,0,additional_costs_pred[0][0]]])[0][0]
 
-        additional_cost_original = self.features_scaler.inverse_transform(price_numeric_array)[0][4]
-        
         return {
-            'predicted_price': price_pred_original,
-            'predicted_additional_costs': additional_cost_original
+            'predicted_price': np.round(price_pred_original, 0),
+            'predicted_additional_costs': np.round(additional_cost_original,0)
         }

@@ -32,16 +32,15 @@ def request_analysis(filters: dict = Depends(get_filters)):
 # Request price prediction
 @app.post("/request-price-prediction")
 def request_price_prediction(input: dict = Depends(get_input)):
-    input["features"] = [0 for _ in range(21)]
     print(f" [*] Requesting price prediction for input: {input}")
     request = req.send_price_prediction_request(input)
     return {"message": f"{request}"}
 
 # Request training
-@app.get("/request-training")
-def request_training():
-    print(f" [*] Requesting training")
-    request = req.send_training_request()
+@app.post("/request-training")
+def request_training(input: dict):
+    print(f" [*] Requesting training for input: {input}")
+    request = req.send_training_request(input['operation'])
     return {"message": f"{request}"}
 
 # Request features columns

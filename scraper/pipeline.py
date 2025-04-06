@@ -1,4 +1,4 @@
-from scraper import Scraper
+from scraper.scraper import Scraper
 from preprocessor import Preprocessor
 from loader import Loader
 from driver import Driver

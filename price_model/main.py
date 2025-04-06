@@ -2,7 +2,7 @@ import pika
 import time
 import json
 from pika.exceptions import AMQPConnectionError
-from utils import run_training, make_prediction, retrieve_features_cols
+from utils import run_training, make_prediction
 
 def create_connection():
     retries = 20
@@ -34,13 +34,11 @@ try:
     channel.queue_declare(queue='price_prediction_response_queue', durable=True)
     channel.queue_declare(queue='training_queue', durable=True)
     channel.queue_declare(queue='training_response_queue', durable=True)
-    channel.queue_declare(queue='features_cols_queue', durable=True)
-    channel.queue_declare(queue='features_cols_response_queue', durable=True)
 
     def training_callback(ch, method, properties, body):
         print(f" [*] Training Task received")
         # Run training
-        result = run_training()
+        result = run_training(json.loads(body))
         
         if result:
             response = "Training completed"
@@ -69,24 +67,11 @@ try:
             body=f"Price prediction completed: {prediction}",
             properties=pika.BasicProperties(delivery_mode=2)
         )
-        
-    def features_cols_callback(ch, method, properties, body):
-        print(f" [*] Features Columns Task received")
-        # Retrieve features columns
-        features_cols = retrieve_features_cols()
-
-        # Send response
-        channel.basic_publish(
-            exchange='',
-            routing_key='features_cols_response_queue',
-            body=f"Features columns retrieved: {features_cols}",
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
+    
         
     # Consume messages
     channel.basic_consume(queue='price_prediction_queue', on_message_callback=price_prediction_callback, auto_ack=True)
     channel.basic_consume(queue='training_queue', on_message_callback=training_callback, auto_ack=True)
-    channel.basic_consume(queue='features_cols_queue', on_message_callback=features_cols_callback, auto_ack=True)
 
     print('Waiting for messages...')
     channel.start_consuming()
