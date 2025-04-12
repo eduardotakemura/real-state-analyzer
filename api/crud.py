@@ -35,7 +35,8 @@ def get_properties_with_filter(db: Session, filters: dict):
 
 def get_properties_count(db: Session):
     try:
-        return db.query(Properties).count()
+        count = db.query(Properties).count()
+        return {"count": count}
     except Exception as e:
         _error_handler(e)
 
@@ -48,7 +49,10 @@ def get_property_by_id(db: Session, property_id: int):
 def get_export_to_csv(db: Session):
     try:
         properties = db.query(Properties).all()
-        return export_to_csv(properties)
+        result = export_to_csv(properties)
+        if not result:
+            raise Exception('Error exporting to csv')
+        return result
     except Exception as e:
         _error_handler(e)
 

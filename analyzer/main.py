@@ -25,7 +25,6 @@ def create_connection():
                 raise e
             time.sleep(5)  # Wait 5 seconds before retrying
 
-# Replace the direct connection creation with the retry function
 try:
     connection = create_connection()
     channel = connection.channel()
@@ -35,7 +34,6 @@ try:
     channel.queue_declare(queue='analyzer_response_queue', durable=True)
 
     def callback(ch, method, properties, body):
-        print(body)
         # Run analysis
         report = run_analysis(json.loads(body))
         

@@ -59,33 +59,37 @@ def extract_filters(requested_filters: dict):
     return filters
 
 def export_to_csv(properties: list):
-     # Get all column names from the Properties model
-    columns = [column.name for column in Properties.__table__.columns]
-    
-    # Create CSV content
-    csv_content = []
-    csv_content.append(columns)  # Add header row
-    
-    # Add data rows
-    for property in properties:
-        row = [getattr(property, column) for column in columns]
-        csv_content.append(row)
-    
-    output = StringIO()
-    writer = csv.writer(output)
-    
-    # Write all rows to the CSV
-    writer.writerows(csv_content)
-    
-    # Get the CSV string
-    csv_string = output.getvalue()
-    
-    # Save locally
-    with open('properties.csv', 'w') as file:
-        file.write(csv_string)
-    
-    # Return length of the csv file
-    return len(csv_string)
+    try:
+        # Get all column names from the Properties model
+        columns = [column.name for column in Properties.__table__.columns]
+            
+        # Create CSV content
+        csv_content = []
+        csv_content.append(columns)  # Add header row
+        
+        # Add data rows
+        for property in properties:
+            row = [getattr(property, column) for column in columns]
+            csv_content.append(row)
+        
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write all rows to the CSV
+        writer.writerows(csv_content)
+        
+        # Get the CSV string
+        csv_string = output.getvalue()
+        
+        # Save locally
+        with open('properties.csv', 'w') as file:
+            file.write(csv_string)
+        
+        # Return length of the csv file
+        return {"path": "api/properties.csv", "length": len(csv_string)}
+
+    except Exception as e:
+        return False
     
 def get_scraping_input(input: dict):
     """Get the scraping input from the filters"""

@@ -1,16 +1,13 @@
 import React from 'react';
+import './Header.css';
 
-const Header = ({ entries, update }) => {
+const Header = () => {
     return (
-        <div className='header'>
-            <h1 className="header-title">Real Estate Analyzer!</h1>
-            <p className="header-description">Select the desired filters and press 'Submit' to get a custom report for this dataset.</p>
-            <div className='header-info'>
-                <p className='header-fields'>Information About: {entries} real states</p>
-                <p className='header-fields'>Last Update:{update}</p>
-            </div>
-        </div>
+        <header className="header">
+            <h1>Real Estate Analyzer</h1>
+            <p>Analyze property data and predict prices with our advanced tools</p>
+        </header>
     );
 };
 
-export default Header;
+export default Header; 

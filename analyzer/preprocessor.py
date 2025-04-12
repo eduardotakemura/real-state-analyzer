@@ -39,7 +39,8 @@ class Preprocessor:
         self.data = self.map_types(self.data)
 
         # Location Clustering #
-        ## First drop outliers #
+        self.data = self.drp_empty_loc(self.data)
+        ## Drop outliers #
         if self.drop_loc_outliers:
             self.data = self.drop_location_outliers(self.data, self.distance_radius)
 
@@ -69,8 +70,15 @@ class Preprocessor:
 
     def drop_unrelevant(self, df):
         features_to_drop = ['id', 'link', 'operation', 'street', 'neighborhood', 'city',
-                            'page_id', 'scrapping_date']
+                            'page_id', 'scraping_date']
         df = df.drop(features_to_drop, axis=1)
+        return df
+
+    def drp_empty_loc(self, df):
+        # drop rows with empty location
+        df = df[df['latitude'] != 0.0]
+        df = df[df['longitude'] != 0.0]
+
         return df
 
     def map_types(self, df):

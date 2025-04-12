@@ -11,10 +11,12 @@ pd.options.display.float_format = '{:,.2f}'.format
 def run_analysis(filters):
     # Fetch data from database
     df = fetch_data(filters)
-    
+    print("Data fetched: ", df.shape)
+
     # Preprocess data
     preprocessor, processed_df = preprocess_data(df)
-    
+    print("Data processed: ", processed_df.shape)
+
     # Run analysis
     corr_matrix = correlation_matrix(processed_df)
     loc_plots = location_plots(processed_df)

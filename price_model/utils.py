@@ -14,7 +14,7 @@ def run_training(filters: dict):
         # Fetch data
         df = _fetch_data(operation)
 
-        if not df:
+        if df is None:
             print(" [!] No data found for the operation")
             return False
 
@@ -59,7 +59,7 @@ def _fetch_data(operation: str):
         
     except Exception as e:
         print(f"Error fetching data: {e}")
-        return False
+        return None
     
     
     

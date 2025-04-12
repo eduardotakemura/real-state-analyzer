@@ -34,23 +34,23 @@ services:
       - database
       - rabbitmq
 
-  ## REACT FRONTEND
-  # react:
-  #   container_name: react
-  #   build:
-  #     context: ./react
-  #     dockerfile: Dockerfile.dev
-  #   ports:
-  #     - '3000:3000'
-  #   volumes:
-  #     - ./react/src:/app/src # Mount only the src directory
-  #     - ./react/public:/app/public # Mount only the public directory
-  #     - /app/node_modules # Ignore node_modules
-  #   environment:
-  #     - CHOKIDAR_USEPOLLING=true
-  #     - WATCHPACK_POLLING=true # Add this for webpack polling
-  #   stdin_open: true
-  #   tty: true
+  # REACT FRONTEND
+  react:
+    container_name: react
+    build:
+      context: ./react
+      dockerfile: Dockerfile.dev
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./react/src:/app/src # Mount only the src directory
+      - ./react/public:/app/public # Mount only the public directory
+      - /app/node_modules # Ignore node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true # Add this for webpack polling
+    stdin_open: true
+    tty: true
   #   depends_on:
   #     - api
 

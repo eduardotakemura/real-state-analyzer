@@ -22,7 +22,7 @@ class Preprocessor:
         self.data = self.map_types(self.data)
 
         # Remove outliers #
-        self.data = self.remove_outliers(self.data, self.drop_outliers)
+        self.data = self.remove_outliers(self.data)
 
         # Geohash location
         self.data = self.geohash_location(self.data, self.geohash_precision)

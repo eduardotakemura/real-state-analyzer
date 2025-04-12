@@ -1,0 +1,15 @@
+.prediction-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Special styling for location input */
+.location-input {
+    background-color: rgba(34, 211, 238, 0.1);
+    border-color: var(--accent-color);
+}
+
+.location-input:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.1);
+} 

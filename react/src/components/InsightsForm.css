@@ -1,0 +1,19 @@
+.insights-form {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Range input styling */
+.range-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.range-value {
+    min-width: 60px;
+    text-align: center;
+    font-weight: bold;
+    color: #007bff;
+} 
