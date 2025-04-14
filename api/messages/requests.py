@@ -54,24 +54,6 @@ def send_training_request(operation: str):
         return f" [x] Sent Training request"
     except Exception as e:
         return f" [!] Error sending training request: {e}"
-
-def send_features_cols_request(): 
-    """Send a message to the RabbitMQ queue for features columns"""
-    try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
-        channel = connection.channel()
-        channel.queue_declare(queue='features_cols_queue', durable=True)
-
-        channel.basic_publish(
-            exchange='',
-            routing_key='features_cols_queue',
-            body=json.dumps({}),
-            properties=pika.BasicProperties(delivery_mode=2)
-        )
-        connection.close()
-        return f" [x] Sent Features Columns request"
-    except Exception as e:
-        return f" [!] Error sending features columns request: {e}"
     
 def send_scraping_request(input: dict): 
     """Send a message to the RabbitMQ queue for scraping"""
