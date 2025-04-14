@@ -1,4 +1,4 @@
-from fastapi import Depends, Request, Path
+from fastapi import Depends, Request, Path, Query
 from sqlalchemy.orm import Session
 import crud
 from extensions import get_db, app
@@ -69,10 +69,15 @@ def all_properties(db: Session = Depends(get_db)):
 def properties_with_filter(db: Session = Depends(get_db), filters: dict = Depends(get_filters)):
     return crud.get_properties_with_filter(db, filters)
 
-# Get properties count
-@app.get("/properties/count")
-def properties_count(db: Session = Depends(get_db)):
-    return crud.get_properties_count(db)
+# Get initial options
+@app.get("/properties/initial-options")
+def initial_options(db: Session = Depends(get_db)):
+    return crud.get_initial_options(db)
+
+# Get properties options
+@app.get("/properties/options/{operation}")
+def properties_options(db: Session = Depends(get_db), operation: str = Path(..., description="Operation")):
+    return crud.get_properties_options(db, operation)
 
 # Get properties by id
 @app.get("/properties/{property_id}")

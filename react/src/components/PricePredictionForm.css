@@ -5,11 +5,11 @@
 
 /* Special styling for location input */
 .location-input {
-    background-color: rgba(34, 211, 238, 0.1);
-    border-color: var(--accent-color);
+    background-color: var(--required-field-bg);
+    border-color: var(--required-field-border);
 }
 
-.location-input:hover {
-    border-color: var(--accent-color);
+.location-input:focus {
+    border-color: var(--required-field-border);
     box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.1);
 } 

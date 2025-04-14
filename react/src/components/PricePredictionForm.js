@@ -28,16 +28,16 @@ const PricePredictionForm = () => {
         <form onSubmit={handleSubmit} className="prediction-form">
             {/* Row 1: Location */}
             <div className="form-row">
-                <div className="form-group location-input" style={{ width: '100%' }}>
-                    <label htmlFor="location">Location</label>
+                <div className="form-group required">
+                    <label className="required">Location</label>
                     <input
                         type="text"
                         id="location"
                         name="location"
                         value={formData.location}
                         onChange={handleChange}
-                        placeholder="Enter location (will be used for API integration)"
-                        required
+                        placeholder="Enter property location"
+                        className="location-input"
                     />
                 </div>
             </div>

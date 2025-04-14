@@ -16,6 +16,8 @@
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --required-field-bg: rgba(34, 211, 238, 0.05);
+    --required-field-border: #22D3EE;
 }
 
 body {
@@ -61,25 +63,33 @@ body {
 /* Common form styles */
 .form-group {
     margin-bottom: 1.5rem;
-    background-color: var(--form-bg-color);
+    background-color: var(--surface-color);
     padding: 1.5rem;
-    border-radius: 12px;
+    border-radius: 8px;
     border: 1px solid var(--border-color);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     box-sizing: border-box;
     flex: 1;
 }
 
 .form-group:hover {
-    background-color: var(--form-hover-bg);
-    border-color: var(--primary-color);
-    box-shadow: var(--shadow-md);
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.form-group.required {
+    background-color: var(--required-field-bg);
+    border: 1px solid var(--required-field-border);
+}
+
+.form-group.disabled {
+    background-color: #f3f4f6;
 }
 
 .form-row {
     display: flex;
-    gap: 2rem;
-    margin-bottom: 2rem;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
     width: 100%;
 }
 
@@ -89,19 +99,24 @@ body {
 
 label {
     display: block;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     color: var(--text-primary);
-    font-weight: 600;
-    font-size: 0.95rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+label.required::after {
+    content: " *";
+    color: var(--accent-color);
 }
 
 input, select {
     width: 100%;
-    padding: 0.875rem 1rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
     background-color: var(--surface-color);
     box-sizing: border-box;
     color: var(--text-primary);
@@ -110,19 +125,19 @@ input, select {
 input:focus, select:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
 }
 
 button[type="submit"] {
     background-color: var(--primary-color);
     color: white;
-    padding: 1rem 2rem;
+    padding: 0.875rem 2rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
     margin-top: 1.5rem;
     width: 100%;
     max-width: 300px;
@@ -134,6 +149,12 @@ button[type="submit"]:hover {
     background-color: var(--primary-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
+}
+
+button[type="submit"].disabled {
+    background-color: var(--primary-color);
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* Special styling for location input */
@@ -152,18 +173,19 @@ button[type="submit"]:hover {
 .range-container {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 0.75rem;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .range-value {
-    min-width: 70px;
+    min-width: 60px;
     text-align: center;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--primary-color);
-    background-color: rgba(37, 99, 235, 0.1);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
+    background-color: rgba(30, 58, 138, 0.05);
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 .footer {

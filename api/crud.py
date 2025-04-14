@@ -33,10 +33,56 @@ def get_properties_with_filter(db: Session, filters: dict):
     except Exception as e:
         _error_handler(e)
 
-def get_properties_count(db: Session):
+def get_initial_options(db: Session):
     try:
-        count = db.query(Properties).count()
-        return {"count": count}
+        # Get total number of entries
+        total_entries = db.query(Properties).count()
+        
+        # Get distinct operations
+        operations = [op[0] for op in db.query(Properties.operation).distinct().all()]
+        
+        return {
+            "count": total_entries,
+            "operations": operations
+        }
+    except Exception as e:
+        _error_handler(e)
+
+def get_properties_options(db: Session, operation: str):
+    try:
+
+        # Filter options by operation
+        query = db.query(Properties).filter(Properties.operation == operation)
+
+        total_entries = query.count()
+        
+        # Get distinct property types
+        types = [t[0] for t in query.with_entities(Properties.type).distinct().all()]
+        
+        # Get distinct cities
+        cities = [c[0] for c in query.with_entities(Properties.city).distinct().all()]
+        
+        # Get distinct neighborhoods
+        neighborhoods = [n[0] for n in query.with_entities(Properties.neighborhood).distinct().all()]
+        
+        # Get min and max size
+        min_size = query.with_entities(Properties.size).order_by(Properties.size.asc()).first()[0]
+        max_size = query.with_entities(Properties.size).order_by(Properties.size.desc()).first()[0]
+        
+        # Get min and max price
+        min_price = query.with_entities(Properties.price).order_by(Properties.price.asc()).first()[0]
+        max_price = query.with_entities(Properties.price).order_by(Properties.price.desc()).first()[0]
+        
+        return {
+            "count": total_entries,
+            "types": types,
+            "cities": cities,
+            "neighborhoods": neighborhoods,
+            "min_size": min_size,
+            "max_size": max_size,
+            "min_price": min_price,
+            "max_price": max_price
+        }
     except Exception as e:
         _error_handler(e)
 

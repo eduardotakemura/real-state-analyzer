@@ -1,7 +1,6 @@
 .tabs {
     display: flex;
     gap: 1rem;
-    margin-bottom: 2rem;
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 1rem;
     justify-content: center;

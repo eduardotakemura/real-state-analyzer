@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import SelectionField from './SelectionField.js';
 import './InsightsForm.css';
 
 const InsightsForm = () => {
@@ -11,10 +12,40 @@ const InsightsForm = () => {
         toilets: '',
         garage: '',
         minSize: '0',
-        maxSize: '500',
+        maxSize: '0',
         minPrice: '0',
-        maxPrice: '1000000'
+        maxPrice: '0'
     });
+
+    const [options, setOptions] = useState({
+        count: 0,
+        operations: [],
+        types: [],
+        cities: [],
+        neighborhoods: [],
+        maxSize: 0,
+        minSize: 0,
+        maxPrice: 0,
+        minPrice: 0
+    });
+
+    useEffect(() => {
+        fetch('http://localhost:8000/properties/initial-options')
+            .then(response => response.json())
+            .then(data =>
+                setOptions({
+                    count: data.count,
+                    operations: data.operations,
+                    types: [],
+                    cities: [],
+                    neighborhoods: [],
+                    minSize: 0,
+                    maxSize: 0,
+                    minPrice: 0,
+                    maxPrice: 0
+                })
+            );
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,6 +53,29 @@ const InsightsForm = () => {
             ...prev,
             [name]: value
         }));
+    };
+
+    const handleOperationChange = (e) => {
+        // Update operation in form data
+        setFormData(prev => ({
+            ...prev,
+            operation: e.target.value
+        }));
+
+        // Fetch options for operation
+        fetch(`http://localhost:8000/properties/options/${e.target.value}`)
+            .then(response => response.json())
+            .then(data => setOptions({
+                count: data.count,
+                operations: options.operations,
+                types: data.types,
+                cities: data.cities,
+                neighborhoods: data.neighborhoods,
+                minSize: data.minSize,
+                maxSize: data.maxSize,
+                minPrice: data.minPrice,
+            }));
+        console.log(options);
     };
 
     const handleSubmit = (e) => {
@@ -32,105 +86,70 @@ const InsightsForm = () => {
 
     return (
         <form onSubmit={handleSubmit} className="insights-form">
-            {/* Row 1: Operation and Type */}
+            <p> {options.count} </p>
+            {/* Row 1: Operation */}
+            <SelectionField
+                id="operation"
+                title="Select Desired Operation (Selling/Renting)"
+                options={options.operations ?
+                    [{ value: '', label: 'Select Operation' }, ...options.operations.map(operation => ({ value: operation, label: operation.charAt(0).toUpperCase() + operation.slice(1) }))] : []}
+                selectedValue={formData.operation}
+                onChange={handleOperationChange}
+                required={true}
+            />
+
+            {/* Row 2: Type, City and Neighborhood */}
             <div className="form-row">
-                <div className="form-group">
-                    <label htmlFor="operation">Operation</label>
-                    <select
-                        id="operation"
-                        name="operation"
-                        value={formData.operation}
-                        onChange={handleChange}
-                    >
-                        <option value="">Select Operation</option>
-                        <option value="rent">Rent</option>
-                        <option value="sale">Sale</option>
-                    </select>
-                </div>
+                <SelectionField
+                    id="type"
+                    title="Select Property Type"
+                    options={options.types ? options.types.map(type => ({ value: type, label: type })) : []}
+                    selectedValue={formData.type}
+                    onChange={handleChange}
+                />
 
-                <div className="form-group">
-                    <label htmlFor="type">Type</label>
-                    <select
-                        id="type"
-                        name="type"
-                        value={formData.type}
-                        onChange={handleChange}
-                    >
-                        <option value="">Select Type</option>
-                        <option value="apartment">Apartment</option>
-                        <option value="house">House</option>
-                        <option value="commercial">Commercial</option>
-                    </select>
-                </div>
-            </div>
+                <SelectionField
+                    id="city"
+                    title="Select City"
+                    options={options.cities ? options.cities.map(city => ({ value: city, label: city })) : []}
+                    selectedValue={formData.city}
+                    onChange={handleChange}
+                />
 
-            {/* Row 2: City and Neighborhood */}
-            <div className="form-row">
-                <div className="form-group">
-                    <label htmlFor="city">City</label>
-                    <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        placeholder="Enter city"
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="neighborhood">Neighborhood</label>
-                    <input
-                        type="text"
-                        id="neighborhood"
-                        name="neighborhood"
-                        value={formData.neighborhood}
-                        onChange={handleChange}
-                        placeholder="Enter neighborhood"
-                    />
-                </div>
+                <SelectionField
+                    id="neighborhood"
+                    title="Select Neighborhood"
+                    options={options.neighborhoods ? options.neighborhoods.map(neighborhood => ({ value: neighborhood, label: neighborhood })) : []}
+                    selectedValue={formData.neighborhood}
+                    onChange={handleChange}
+                />
             </div>
 
             {/* Row 3: Bedrooms, Bathrooms, Garage */}
             <div className="form-row">
-                <div className="form-group">
-                    <label htmlFor="dorms">Bedrooms</label>
-                    <input
-                        type="number"
-                        id="dorms"
-                        name="dorms"
-                        value={formData.dorms}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of bedrooms"
-                    />
-                </div>
+                <SelectionField
+                    id="dorms"
+                    title="Number of Bedrooms"
+                    options={[{ value: 0, label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                    selectedValue={formData.dorms}
+                    onChange={handleChange}
+                />
 
-                <div className="form-group">
-                    <label htmlFor="toilets">Bathrooms</label>
-                    <input
-                        type="number"
-                        id="toilets"
-                        name="toilets"
-                        value={formData.toilets}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of bathrooms"
-                    />
-                </div>
+                <SelectionField
+                    id="toilets"
+                    title="Number of Bathrooms"
+                    options={[{ value: 0, label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                    selectedValue={formData.toilets}
+                    onChange={handleChange}
+                />
 
-                <div className="form-group">
-                    <label htmlFor="garage">Garage Spaces</label>
-                    <input
-                        type="number"
-                        id="garage"
-                        name="garage"
-                        value={formData.garage}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of garage spaces"
-                    />
-                </div>
+                <SelectionField
+                    id="garage"
+                    title="Garage Spaces"
+                    options={[{ value: 0, label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                    selectedValue={formData.garage}
+                    onChange={handleChange}
+                />
             </div>
 
             {/* Row 4: Size and Price Range */}
@@ -144,11 +163,11 @@ const InsightsForm = () => {
                             name="minSize"
                             value={formData.minSize}
                             onChange={handleChange}
-                            min="0"
-                            max="500"
-                            step="10"
+                            min={options.minSize}
+                            max={options.maxSize}
+                            step="20"
                         />
-                        <span className="range-value">{formData.minSize}m²</span>
+                        <span className="range-value">{formData.minSize} m²</span>
                     </div>
                     <div className="range-container">
                         <input
@@ -157,11 +176,11 @@ const InsightsForm = () => {
                             name="maxSize"
                             value={formData.maxSize}
                             onChange={handleChange}
-                            min="0"
-                            max="500"
-                            step="10"
+                            min={options.minSize}
+                            max={options.maxSize}
+                            step="20"
                         />
-                        <span className="range-value">{formData.maxSize}m²</span>
+                        <span className="range-value">{formData.maxSize} m²</span>
                     </div>
                 </div>
 
@@ -174,11 +193,11 @@ const InsightsForm = () => {
                             name="minPrice"
                             value={formData.minPrice}
                             onChange={handleChange}
-                            min="0"
-                            max="1000000"
+                            min={options.minPrice}
+                            max={options.maxPrice}
                             step="10000"
                         />
-                        <span className="range-value">${formData.minPrice}</span>
+                        <span className="range-value">R${formData.minPrice}</span>
                     </div>
                     <div className="range-container">
                         <input
@@ -187,16 +206,16 @@ const InsightsForm = () => {
                             name="maxPrice"
                             value={formData.maxPrice}
                             onChange={handleChange}
-                            min="0"
-                            max="1000000"
+                            min={options.minPrice}
+                            max={options.maxPrice}
                             step="10000"
                         />
-                        <span className="range-value">${formData.maxPrice}</span>
+                        <span className="range-value">R${formData.maxPrice}</span>
                     </div>
                 </div>
             </div>
 
-            <button type="submit" className="submit-button">
+            <button type="submit" className={`submit-button ${formData.operation == '' ? 'disabled' : ''}`}>
                 Search Properties
             </button>
         </form>
