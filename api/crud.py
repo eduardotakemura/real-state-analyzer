@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from models import Properties
 from fastapi import HTTPException
 from utils import export_to_csv
+from sqlalchemy import func
 
 def get_all_properties(db: Session):
     try:
@@ -50,20 +51,34 @@ def get_initial_options(db: Session):
 
 def get_properties_options(db: Session, operation: str):
     try:
-
         # Filter options by operation
         query = db.query(Properties).filter(Properties.operation == operation)
 
         total_entries = query.count()
         
-        # Get distinct property types
-        types = [t[0] for t in query.with_entities(Properties.type).distinct().all()]
+        # Get distinct property types with counts
+        types = db.query(Properties.type, func.count(Properties.type).label('count'))\
+            .filter(Properties.operation == operation)\
+            .group_by(Properties.type)\
+            .order_by(func.count(Properties.type).desc())\
+            .all()
+        types = [t[0] for t in types]
         
-        # Get distinct cities
-        cities = [c[0] for c in query.with_entities(Properties.city).distinct().all()]
+        # Get distinct cities with counts
+        cities = db.query(Properties.city, func.count(Properties.city).label('count'))\
+            .filter(Properties.operation == operation)\
+            .group_by(Properties.city)\
+            .order_by(func.count(Properties.city).desc())\
+            .all()
+        cities = [c[0] for c in cities]
         
-        # Get distinct neighborhoods
-        neighborhoods = [n[0] for n in query.with_entities(Properties.neighborhood).distinct().all()]
+        # Get distinct neighborhoods, order alphabetically
+        neighborhoods = db.query(Properties.neighborhood)\
+            .filter(Properties.operation == operation)\
+            .distinct()\
+            .order_by(Properties.neighborhood.asc())\
+            .all()
+        neighborhoods = [n[0] for n in neighborhoods]
         
         # Get min and max size
         min_size = query.with_entities(Properties.size).order_by(Properties.size.asc()).first()[0]

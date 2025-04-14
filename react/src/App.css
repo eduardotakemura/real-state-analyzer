@@ -32,12 +32,14 @@ body {
 
 .App {
     text-align: center;
-    padding: 2rem;
+    padding: 1rem;
     max-width: 1200px;
     margin: 0 auto;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .container {
@@ -46,9 +48,11 @@ body {
     background: var(--surface-color);
     border-radius: 16px;
     box-shadow: var(--shadow-lg);
-    padding: 2.5rem;
+    padding: 1.5rem;
     flex: 1;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .container:hover {
@@ -57,19 +61,23 @@ body {
 }
 
 .content {
-    padding: 1.5rem;
+    padding: 1rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Common form styles */
 .form-group {
     margin-bottom: 1.5rem;
     background-color: var(--surface-color);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 8px;
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
     box-sizing: border-box;
     flex: 1;
+    min-width: 0;
+    width: 100%;
 }
 
 .form-group:hover {
@@ -199,15 +207,24 @@ button[type="submit"].disabled {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .App {
-        padding: 1rem;
+        padding: 0.5rem;
     }
     
     .container {
-        padding: 1.5rem;
+        padding: 1rem;
+        border-radius: 8px;
+    }
+    
+    .content {
+        padding: 0.5rem;
     }
     
     .form-row {
         flex-direction: column;
         gap: 1rem;
+    }
+
+    .form-group {
+        padding: 0.75rem;
     }
 }
