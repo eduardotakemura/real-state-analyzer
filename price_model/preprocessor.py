@@ -44,7 +44,7 @@ class Preprocessor:
         return df
 
     def map_types(self, df):
-        # Casa = 0, Apartamento = 1, Terreno = 2, Comercial = 3, Fazenda = 4, Outros = 5
+        # Casa = 0, Apartamento = 1
         type_map = {
             'Casa': 0,
             'Apartamento': 1,
@@ -52,22 +52,22 @@ class Preprocessor:
             'Cobertura': 1,
             'Flat': 1,
             'Kitnet/Conjugado': 1,
-            'Lote/Terreno': 2,
+            'Lote/Terreno': 0,
             'Sobrado': 0,
-            'Edifício Residencial': 3,
-            'Fazenda/Sítios/Chácaras': 4,
-            'Consultório': 3,
-            'Galpão/Depósito/Armazém': 3,
-            'Imóvel Comercial': 3,
-            'Lote/Terreno': 2,
-            'Ponto Comercial/Loja/Box': 3,
-            'Sala/Conjunto': 3,
-            'Prédio/Edifício Inteiro': 3,
+            'Edifício Residencial': 0,
+            'Fazenda/Sítios/Chácaras': 0,
+            'Consultório': 0,
+            'Galpão/Depósito/Armazém': 0,
+            'Imóvel Comercial': 0,
+            'Lote/Terreno': 0,
+            'Ponto Comercial/Loja/Box': 0,
+            'Sala/Conjunto': 0,
+            'Prédio/Edifício Inteiro': 0,
         }
         df['type'] = df['type'].map(type_map)
 
-        # Fill NaN with 5 = not defined maps
-        df['type'] = df['type'].fillna(5)
+        # Drop NaN
+        df = df.dropna(subset=['type'])
 
         # Cast to int
         df['type'] = df['type'].astype(int)

@@ -184,13 +184,12 @@ class PriceModel:
               'target_scaler': self.target_scaler
           }, file)
 
-
-    def load_models(self):
+    def load_models(self, operation):
         try:
             """Loads trained models, encoders, and column info."""
-            base_dir = f'data/{self.operation}'
+            base_dir = f'data/{operation}'
             if not os.path.exists(base_dir):
-                return 'Directory not found'
+                raise Exception("Directory not found")
 
             with open(f'{base_dir}/price_model.pkl', 'rb') as file:
                 self.price_model = pickle.load(file)
@@ -206,79 +205,81 @@ class PriceModel:
 
         except Exception as e:
             print(f"Error loading models: {e}")
-            return 'Error in loading models'
+            raise Exception("Error in loading models")
 
     def make_prediction(self, input_data):
         """Makes a prediction based on input data."""
-        # Load models
-        if self.price_model is None or self.additional_model is None:
-          print('Loading models...')
-          try:
-            self.load_models()
-          except Exception as e:
-            return 'Error in loading models'
+        try:
+            if not input_data["operation"] or input_data["operation"] == "":
+                raise Exception("Operation not sent")
+                
+            # Load models
+            self.load_models(input_data["operation"])
 
-        def encode_location(gh):
-          """Encodes geohash, handling unknown values by finding the closest known one."""
-          try:
-              return self.label_encoder.transform([gh])[0]
-          except ValueError:
-              # Find closest known geohash
-              lat, lon = geohash.decode(gh)
-              closest_geohash = min(self.label_encoder.classes_, key=lambda known_gh: 
-                  ((lat - geohash.decode(known_gh)[0]) ** 2 + (lon - geohash.decode(known_gh)[1]) ** 2) ** 0.5
-              )
-              return self.label_encoder.transform([closest_geohash])[0]
-        
-        # Encode location
-        geohash_code = geohash.encode(input_data['location'][0], input_data['location'][1], precision=8)
-        location_encoded = encode_location(geohash_code)
-        
-        # Create feature arrays for additional costs prediction
-        additional_features = np.array([[
-            input_data['size'],
-            input_data['dorms'],
-            input_data['toilets'],
-            input_data['garage'],  
-            0, # Initial dummy value
-        ]])
-        
-        # Standardize numeric features
-        additional_numeric_scaled = self.features_scaler.transform(additional_features)
+            def encode_location(gh):
+                """Encodes geohash, handling unknown values by finding the closest known one."""
+                try:
+                    return self.label_encoder.transform([gh])[0]
+                except ValueError:
+                    # Find closest known geohash
+                    lat, lon = geohash.decode(gh)
+                    closest_geohash = min(self.label_encoder.classes_, key=lambda known_gh: 
+                        ((lat - geohash.decode(known_gh)[0]) ** 2 + (lon - geohash.decode(known_gh)[1]) ** 2) ** 0.5
+                    )
+                    return self.label_encoder.transform([closest_geohash])[0]
+            
+            # Encode location
+            geohash_code = geohash.encode(input_data['location'][0], input_data['location'][1], precision=8)
+            location_encoded = encode_location(geohash_code)
+            
+            # Create feature arrays for additional costs prediction
+            additional_features = np.array([[
+                input_data['size'],
+                input_data['dorms'],
+                input_data['toilets'],
+                input_data['garage'],  
+                0, # Initial dummy value
+            ]])
+            
+            # Standardize numeric features
+            additional_numeric_scaled = self.features_scaler.transform(additional_features)
 
-        # Reshape types list
-        types_feature = np.array(input_data['type']).reshape(1, -1)
+            # Reshape types list
+            types_feature = np.array(input_data['type']).reshape(1, -1)
+            
+            # Combine features into array
+            additional_features_array = np.concatenate([
+                additional_numeric_scaled[:, :-1],  # all except additional costs
+                types_feature
+            ], axis=1)
         
-        # Combine features into array
-        additional_features_array = np.concatenate([
-            additional_numeric_scaled[:, :-1],  # all except additional costs
-            types_feature
-        ], axis=1)
-       
-        # Predict additional costs
-        additional_costs_pred = self.additional_model.predict([
-            np.array([[location_encoded]]), # location = Embedding
-            additional_features_array # features
-        ])
-      
-        # Create feature arrays for price prediction (including predicted additional costs)
-        price_features_array = np.concatenate([
-            additional_numeric_scaled[:, :-1], 
-            np.array([[additional_costs_pred[0][0]]]),
-            types_feature
-        ], axis=1)
+            # Predict additional costs
+            additional_costs_pred = self.additional_model.predict([
+                np.array([[location_encoded]]), # location = Embedding
+                additional_features_array # features
+            ])
         
-        # Predict price
-        price_pred = self.price_model.predict([
-            np.array([[location_encoded]]),
-            price_features_array
-        ])
-        
-        # Inverse transform both predictions
-        price_pred_original = self.target_scaler.inverse_transform(price_pred)[0][0]
-        additional_cost_original = self.features_scaler.inverse_transform([[0,0,0,0,additional_costs_pred[0][0]]])[0][0]
+            # Create feature arrays for price prediction (including predicted additional costs)
+            price_features_array = np.concatenate([
+                additional_numeric_scaled[:, :-1], 
+                np.array([[additional_costs_pred[0][0]]]),
+                types_feature
+            ], axis=1)
+            
+            # Predict price
+            price_pred = self.price_model.predict([
+                np.array([[location_encoded]]),
+                price_features_array
+            ])
+            
+            # Inverse transform both predictions
+            price_pred_original = self.target_scaler.inverse_transform(price_pred)[0][0]
+            additional_cost_original = self.features_scaler.inverse_transform([[0,0,0,0,additional_costs_pred[0][0]]])[0][0]
 
-        return {
-            'predicted_price': np.round(price_pred_original, 0),
-            'predicted_additional_costs': np.round(additional_cost_original,0)
-        }
+            return {
+                'predicted_price': np.round(price_pred_original, 0),
+                'predicted_additional_costs': np.round(additional_cost_original,0)
+            }
+        except Exception as e:
+            print(f"Error making prediction: {e}")
+            return 'Error in making prediction'
