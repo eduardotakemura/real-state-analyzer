@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SelectionField from './SelectionField.js';
+import AnalysisReport from './AnalysisReport.js';
 import './InsightsForm.css';
 
 const LoadingOverlay = () => (
@@ -12,6 +13,8 @@ const InsightsForm = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAllFields, setShowAllFields] = useState(false);
+    const [showReport, setShowReport] = useState(false);
+    const [analysisData, setAnalysisData] = useState(null);
     const [formData, setFormData] = useState({
         operation: '',
         type: '',
@@ -37,6 +40,65 @@ const InsightsForm = () => {
         max_price: 0,
         min_price: 0
     });
+
+    // WebSocket connection
+    useEffect(() => {
+        const socket = new WebSocket('ws://localhost:8000/ws-insights');
+
+        socket.onopen = () => {
+            console.log('WebSocket connection established');
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                // Replace NaN values with null before parsing
+                const sanitizedData = event.data.replace(/:NaN/g, ':null');
+                const message = JSON.parse(sanitizedData);
+                console.log("Received WebSocket message:", message);
+
+                if (message.type === 'analysis') {
+                    console.log("Analysis data received:", message.data);
+                    // Convert null back to NaN for numeric fields
+                    const processedData = processAnalysisData(message.data);
+                    setAnalysisData(processedData);
+                    setShowReport(true);
+                    setIsSubmitting(false);
+                }
+            } catch (error) {
+                console.error("Error parsing WebSocket message:", error);
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket connection closed");
+        };
+
+        return () => socket.close();
+    }, []);
+
+    const processAnalysisData = (data) => {
+        // Helper function to recursively process the data and convert null back to NaN
+        const processValue = (value) => {
+            if (value === null) return NaN;
+            if (typeof value === 'object' && value !== null) {
+                if (Array.isArray(value)) {
+                    return value.map(processValue);
+                }
+                const processed = {};
+                for (const key in value) {
+                    processed[key] = processValue(value[key]);
+                }
+                return processed;
+            }
+            return value;
+        };
+
+        return processValue(data);
+    };
 
     // Fetch initial options
     useEffect(() => {
@@ -117,175 +179,190 @@ const InsightsForm = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // TODO: Implement API call to backend
-        console.log('Form submitted:', formData);
-        fetch('http://localhost:8000/properties/filter', {
+        setShowReport(false);
+
+        fetch('http://localhost:8000/request-analysis', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(formData)
         })
-            .then(response => response.json())
-            .then(data => {
-                console.log('API response:', data);
-                // TODO: Handle the response from the backend
-            })
-            .finally(() => setIsSubmitting(false));
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                setIsSubmitting(false);
+            });
+    };
+
+    const handleReset = () => {
+        setShowReport(false);
+        setAnalysisData(null);
     };
 
     return (
         <div className="form-container">
             {isLoading && <LoadingOverlay />}
             {isSubmitting && <LoadingOverlay />}
-            <form onSubmit={handleSubmit} className="insights-form">
-                {/* Row 1: Operation */}
-                <SelectionField
-                    id="operation"
-                    title="Select Desired Operation (Selling/Renting)"
-                    options={[
-                        { value: '', label: 'Select Operation' },
-                        ...options.operations.map(operation => ({
-                            value: operation,
-                            label: operation.charAt(0).toUpperCase() + operation.slice(1)
-                        }))
-                    ]}
-                    selectedValue={formData.operation}
-                    onChange={handleOperationChange}
-                    required={true}
-                />
 
-                {showAllFields && (
-                    <>
-                        {/* Row 2: Type, City and Neighborhood */}
-                        <div className="form-row">
-                            <SelectionField
-                                id="type"
-                                title="Select Property Type"
-                                options={[
-                                    { value: '', label: 'All Types' },
-                                    ...options.types.map(type => ({ value: type, label: type }))
-                                ]}
-                                selectedValue={formData.type}
-                                onChange={handleChange}
-                            />
+            {!showReport ? (
+                <form onSubmit={handleSubmit} className="insights-form">
+                    <SelectionField
+                        id="operation"
+                        title="Select Desired Operation (Selling/Renting)"
+                        options={[
+                            { value: '', label: 'Select Operation' },
+                            ...options.operations.map(operation => ({
+                                value: operation,
+                                label: operation.charAt(0).toUpperCase() + operation.slice(1)
+                            }))
+                        ]}
+                        selectedValue={formData.operation}
+                        onChange={handleOperationChange}
+                        required={true}
+                    />
 
-                            <SelectionField
-                                id="city"
-                                title="Select City"
-                                options={[
-                                    { value: '', label: 'All Cities' },
-                                    ...options.cities.map(city => ({ value: city, label: city }))
-                                ]}
-                                selectedValue={formData.city}
-                                onChange={handleChange}
-                            />
+                    {showAllFields && (
+                        <>
+                            {/* Row 2: Type, City and Neighborhood */}
+                            <div className="form-row">
+                                <SelectionField
+                                    id="type"
+                                    title="Select Property Type"
+                                    options={[
+                                        { value: '', label: 'All Types' },
+                                        ...options.types.map(type => ({ value: type, label: type }))
+                                    ]}
+                                    selectedValue={formData.type}
+                                    onChange={handleChange}
+                                />
 
-                            <SelectionField
-                                id="neighborhood"
-                                title="Select Neighborhood"
-                                options={[
-                                    { value: '', label: 'All Neighborhoods' },
-                                    ...options.neighborhoods.map(neighborhood => ({ value: neighborhood, label: neighborhood }))
-                                ]}
-                                selectedValue={formData.neighborhood}
-                                onChange={handleChange}
-                            />
-                        </div>
+                                <SelectionField
+                                    id="city"
+                                    title="Select City"
+                                    options={[
+                                        { value: '', label: 'All Cities' },
+                                        ...options.cities.map(city => ({ value: city, label: city }))
+                                    ]}
+                                    selectedValue={formData.city}
+                                    onChange={handleChange}
+                                />
 
-                        {/* Row 3: Bedrooms, Bathrooms, Garage */}
-                        <div className="form-row">
-                            <SelectionField
-                                id="dorms"
-                                title="Number of Bedrooms"
-                                options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
-                                selectedValue={formData.dorms}
-                                onChange={handleChange}
-                            />
+                                <SelectionField
+                                    id="neighborhood"
+                                    title="Select Neighborhood"
+                                    options={[
+                                        { value: '', label: 'All Neighborhoods' },
+                                        ...options.neighborhoods.map(neighborhood => ({ value: neighborhood, label: neighborhood }))
+                                    ]}
+                                    selectedValue={formData.neighborhood}
+                                    onChange={handleChange}
+                                />
+                            </div>
 
-                            <SelectionField
-                                id="toilets"
-                                title="Number of Bathrooms"
-                                options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
-                                selectedValue={formData.toilets}
-                                onChange={handleChange}
-                            />
+                            {/* Row 3: Bedrooms, Bathrooms, Garage */}
+                            <div className="form-row">
+                                <SelectionField
+                                    id="dorms"
+                                    title="Number of Bedrooms"
+                                    options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                                    selectedValue={formData.dorms}
+                                    onChange={handleChange}
+                                />
 
-                            <SelectionField
-                                id="garage"
-                                title="Garage Spaces"
-                                options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
-                                selectedValue={formData.garage}
-                                onChange={handleChange}
-                            />
-                        </div>
+                                <SelectionField
+                                    id="toilets"
+                                    title="Number of Bathrooms"
+                                    options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                                    selectedValue={formData.toilets}
+                                    onChange={handleChange}
+                                />
 
-                        {/* Row 4: Size and Price Range */}
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Size Range (m²)</label>
-                                <div className="range-container">
-                                    <input
-                                        type="range"
-                                        id="min_size"
-                                        name="min_size"
-                                        value={formData.min_size}
-                                        onChange={handleChange}
-                                        min={options.min_size}
-                                        max={options.max_size}
-                                        step="20"
-                                    />
-                                    <span className="range-value">{formData.min_size} m²</span>
+                                <SelectionField
+                                    id="garage"
+                                    title="Garage Spaces"
+                                    options={[{ value: "", label: 'Any' }, { value: 1, label: '1+' }, { value: 2, label: '2+' }, { value: 3, label: '3+' }]}
+                                    selectedValue={formData.garage}
+                                    onChange={handleChange}
+                                />
+                            </div>
+
+                            {/* Row 4: Size and Price Range */}
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label>Size Range (m²)</label>
+                                    <div className="range-container">
+                                        <input
+                                            type="range"
+                                            id="min_size"
+                                            name="min_size"
+                                            value={formData.min_size}
+                                            onChange={handleChange}
+                                            min={options.min_size}
+                                            max={options.max_size}
+                                            step="20"
+                                        />
+                                        <span className="range-value">{formData.min_size} m²</span>
+                                    </div>
+                                    <div className="range-container">
+                                        <input
+                                            type="range"
+                                            id="maxSize"
+                                            name="max_size"
+                                            value={formData.max_size}
+                                            onChange={handleChange}
+                                            min={options.min_size}
+                                            max={options.max_size}
+                                            step="20"
+                                        />
+                                        <span className="range-value">{formData.max_size} m²</span>
+                                    </div>
                                 </div>
-                                <div className="range-container">
-                                    <input
-                                        type="range"
-                                        id="maxSize"
-                                        name="max_size"
-                                        value={formData.max_size}
-                                        onChange={handleChange}
-                                        min={options.min_size}
-                                        max={options.max_size}
-                                        step="20"
-                                    />
-                                    <span className="range-value">{formData.max_size} m²</span>
+
+                                <div className="form-group">
+                                    <label>Price Range</label>
+                                    <div className="range-container">
+                                        <input
+                                            type="range"
+                                            id="min_price"
+                                            name="min_price"
+                                            value={formData.min_price}
+                                            onChange={handleChange}
+                                            min={options.min_price}
+                                            max={options.max_price}
+                                            step="10000"
+                                        />
+                                        <span className="range-value">R${formData.min_price}</span>
+                                    </div>
+                                    <div className="range-container">
+                                        <input
+                                            type="range"
+                                            id="max_price"
+                                            name="max_price"
+                                            value={formData.max_price}
+                                            onChange={handleChange}
+                                            min={options.min_price}
+                                            max={options.max_price}
+                                            step="10000"
+                                        />
+                                        <span className="range-value">R${formData.max_price}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="form-group">
-                                <label>Price Range</label>
-                                <div className="range-container">
-                                    <input
-                                        type="range"
-                                        id="min_price"
-                                        name="min_price"
-                                        value={formData.min_price}
-                                        onChange={handleChange}
-                                        min={options.min_price}
-                                        max={options.max_price}
-                                        step="10000"
-                                    />
-                                    <span className="range-value">R${formData.min_price}</span>
-                                </div>
-                                <div className="range-container">
-                                    <input
-                                        type="range"
-                                        id="max_price"
-                                        name="max_price"
-                                        value={formData.max_price}
-                                        onChange={handleChange}
-                                        min={options.min_price}
-                                        max={options.max_price}
-                                        step="10000"
-                                    />
-                                    <span className="range-value">R${formData.max_price}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button type="submit" className={`submit-button ${formData.operation === '' ? 'disabled' : ''}`}>
-                            Search Properties
-                        </button>
-                    </>
-                )}
-            </form>
+                            <button type="submit" className={`submit-button ${formData.operation === '' ? 'disabled' : ''}`}>
+                                Search Properties
+                            </button>
+                        </>
+                    )}
+                </form>
+            ) : (
+                <div className="report-container">
+                    <button onClick={handleReset} className="reset-button">
+                        Back to Search
+                    </button>
+                    <AnalysisReport data={analysisData} />
+                </div>
+            )}
         </div>
     );
 };

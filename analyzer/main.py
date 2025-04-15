@@ -41,7 +41,7 @@ try:
         channel.basic_publish(
             exchange='',
             routing_key='analyzer_response_queue',
-            body=f"{report}",
+            body=json.dumps(report),
             properties=pika.BasicProperties(delivery_mode=2)
         )
 

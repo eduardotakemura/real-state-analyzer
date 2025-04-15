@@ -1,10 +1,27 @@
-from fastapi import Depends, Request, Path, Query
+from fastapi import Depends, Request, Path, WebSocket
 from sqlalchemy.orm import Session
 import crud
 from extensions import get_db, app
 import messages.requests as req
 from messages.messages import start_listener
 from utils import extract_filters, get_scraping_input, get_data
+from messages.callbacks import connected_clients
+
+## ---------------- WebSocket ---------------- ##
+@app.websocket("/ws-insights")
+async def insights_websocket(websocket: WebSocket):
+    await websocket.accept()
+    connected_clients.append(websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except:
+        connected_clients.remove(websocket)
+    finally:
+        # Ensure client is removed from list
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
 
 ## ---------------- Dependencies Methods ---------------- ##
 async def get_filters(request: Request):
@@ -15,8 +32,7 @@ async def get_input(request: Request):
     input_data = await request.json()
     return input_data
 
-## ---------------- Routes ---------------- ##
-# Start RabbitMQ listener when FastAPI starts
+## ---------------- RabbitMQ Listener ---------------- ##
 @app.on_event("startup")
 def startup_event():
     start_listener()
@@ -49,7 +65,6 @@ def request_scraping(input: dict = Depends(get_scraping_input)):
     print(f" [*] Requesting scraping for input: {input}")
     request = req.send_scraping_request(input)
     return {"message": f"{request}"}
-
 
 ## ---------------- Frontend Routes ---------------- ##
 # Get initial options
