@@ -5,7 +5,11 @@ import './InsightsForm.css';
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">
-        <div className="loading-spinner"></div>
+        <div className="loading-spinner">
+        </div>
+        <div className="loading-text">
+            Loading your data, it will take just a few seconds...
+        </div>
     </div>
 );
 

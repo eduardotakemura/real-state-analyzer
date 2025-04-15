@@ -18,21 +18,17 @@ def run_analysis(filters):
     print("Data processed: ", processed_df.shape)
 
     # Run analysis
-    corr_matrix = correlation_matrix(processed_df)
-    loc_plots = location_plots(processed_df)
+    plots = generate_plots(processed_df)
     loc_summary = summarize_by_location(processed_df)
-    type_summary = summarize_by_type(processed_df)
-    type_dist = type_distribution(processed_df)
     
     # Return analysis
     return {
-        "corr_matrix": corr_matrix.to_dict(),
-        "loc_plots": loc_plots,
+        "plots": plots,
         "loc_summary": loc_summary.to_dict(),
-        "type_summary": type_summary.to_dict(),
-        "type_dist": type_dist,
         "clusters_map": preprocessor.clusters_map,
-        "price_heatmap": preprocessor.price_heatmap
+        "price_heatmap": preprocessor.price_heatmap,
+        "operation": filters['operation'],
+        "entries_count": len(processed_df)
     } 
 
 def fetch_data(filters):
@@ -65,68 +61,76 @@ def fig_to_base64(fig):
     plt.close(fig)
     return base64_img
 
-def correlation_matrix(df, show=False):
-    corr_matrix = df.corr()
-    if show:
-        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
-        plt.title("Correlation Matrix")
-        plt.show()
-        
-    return corr_matrix
+def generate_plots(df):
+    """Creates a 2x2 grid of location-based real estate plots with styled visuals."""
+    # Copy and map 'type' to readable strings
+    type_map = {0: 'House', 1: 'Apartment'}
+    df = df.copy()
+    df['type'] = df['type'].map(type_map)
 
-def location_plots(df):
-    """Plots size, dorms, toilets, garage, additional costs, and type per location."""
-    fig, axes = plt.subplots(3, 2, figsize=(9, 8))
+    # Add price per square meter column
+    df['price_per_sqm'] = df['price'] / df['size']
 
-    sns.boxplot(data=df, x='location', y='size', ax=axes[0, 0])
-    axes[0, 0].set_title('Size per Location')
+    # Define vivid color palette
+    vivid_palette = ['#007acc', '#ff6600']
+    box_palette = ['#4dabf7'] * df['location'].nunique()
 
-    sns.boxplot(data=df, x='location', y='dorms', ax=axes[0, 1])
-    axes[0, 1].set_title('Dorms per Location')
+    # Set style
+    sns.set_style("whitegrid")
 
-    sns.boxplot(data=df, x='location', y='toilets', ax=axes[1, 0])
-    axes[1, 0].set_title('Toilets per Location')
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-    sns.boxplot(data=df, x='location', y='garage', ax=axes[1, 1])
-    axes[1, 1].set_title('Garage per Location')
+    # --- 1. Size per Location (boxplot)
+    sns.boxplot(data=df, x='location', y='size', ax=axes[0, 0], palette=box_palette)
+    axes[0, 0].set_title('Property Size by Location')
+    axes[0, 0].set_xlabel('Location')
+    axes[0, 0].set_ylabel('Size (m²)')
+    axes[0, 0].tick_params(axis='x', rotation=0)
+    axes[0, 0].set_yticks(range(0, int(df['size'].max()) + 50, 50))
 
-    sns.countplot(data=df, x='location', hue='type', ax=axes[2, 0])
-    axes[2, 0].set_title('Type Distribution per Location')
+    # --- 2. Price per sqm by Location (boxplot)
+    sns.boxplot(data=df, x='location', y='price_per_sqm', ax=axes[0, 1], palette=box_palette)
+    axes[0, 1].set_title('Price per m² by Location (R$/m²)')
+    axes[0, 1].set_xlabel('Location')
+    axes[0, 1].set_ylabel('Price per m² (R$)')
+    axes[0, 1].tick_params(axis='x', rotation=0)
+    step = 3000 if df['price_per_sqm'].max() > 1000 else 50
+    axes[0, 1].set_yticks(range(0, int(df['price_per_sqm'].max()) + step, step))
+
+    # --- 3. Type Percentage per Location (stacked bar)
+    type_loc = df.groupby(['location', 'type']).size().unstack().fillna(0)
+    type_percent = (type_loc.T / type_loc.T.sum()).T * 100
+    type_percent.plot(
+        kind='bar',
+        stacked=True,
+        ax=axes[1, 0],
+        color=vivid_palette,
+        edgecolor='black'
+    )
+    axes[1, 0].set_ylabel('Percentage (%)')
+    axes[1, 0].set_title('Type (%) by Location')
+    axes[1, 0].set_xlabel('Location')
+    axes[1, 0].legend(title='Type')
+    axes[1, 0].tick_params(axis='x', rotation=0)
+
+    # --- 4. Overall Type Distribution (pie chart)
+    type_counts = df['type'].value_counts()
+    axes[1, 1].pie(
+        type_counts,
+        labels=type_counts.index,
+        autopct='%1.1f%%',
+        startangle=90,
+        colors=vivid_palette,
+        wedgeprops={'edgecolor': 'white'}
+    )
+    axes[1, 1].set_title('Overall Type Distribution')
+    axes[1, 1].axis('equal')
 
     plt.tight_layout()
-
-    return fig_to_base64(fig)
-
-def summarize_by_type(df):
-    """ Create a summary by type table. """
-    summary = df.groupby('type').agg({
-        'size': 'mean',
-        'dorms': 'mean',
-        'toilets': 'mean',
-        'garage': 'mean',
-        'price': 'mean',
-        'additional_costs': 'mean',
-        'price_per_sqm': 'mean'
-    }).reset_index()
-
-    # Rename columns for clarity
-    summary['type'] = summary['type'].map({1: 'Apartment', 0: 'House'})
-
-    return summary
-
-def type_distribution(df):
-    """ Create a type distribution pie chart. """
-    type_counts = df['type'].value_counts()
-    type_counts.index = type_counts.index.map({1: 'Apartment', 0: 'House'})
-
-    fig, ax = plt.subplots(figsize=(4, 3))
-    ax.pie(type_counts, labels=type_counts.index, autopct='%1.1f%%', startangle=90)
-    ax.set_title('Type Distribution')
     return fig_to_base64(fig)
 
 def summarize_by_location(df):
     """ Create a simplified summary by location. """
-
     # Aggregation and grouping by location
     summary = df.groupby('location').agg({
         'price_per_sqm': 'mean',

@@ -14,13 +14,14 @@ def get_properties_with_filter(db: Session, filters: dict):
     try:
         query = db.query(Properties)
         
-        # Apply exact match filters
+        # Apply exact match filters (excluding numeric fields that need range filtering)
         exact_filters = {k: v for k, v in filters.items() 
-                        if not k.endswith('_gte') and not k.endswith('_lte')}
+                        if not k.endswith('_gte') and not k.endswith('_lte') and
+                        k not in ['dorms', 'garage', 'toilets']}
         if exact_filters:
             query = query.filter_by(**exact_filters)
         
-        # Apply range filters
+        # Apply range filters for size and price
         if 'size_gte' in filters:
             query = query.filter(Properties.size >= filters['size_gte'])
         if 'size_lte' in filters:
@@ -29,6 +30,14 @@ def get_properties_with_filter(db: Session, filters: dict):
             query = query.filter(Properties.price >= filters['price_gte'])
         if 'price_lte' in filters:
             query = query.filter(Properties.price <= filters['price_lte'])
+        
+        # Apply minimum value filters for dorms, garage, and toilets
+        if 'dorms' in filters:
+            query = query.filter(Properties.dorms >= filters['dorms'])
+        if 'garage' in filters:
+            query = query.filter(Properties.garage >= filters['garage'])
+        if 'toilets' in filters:
+            query = query.filter(Properties.toilets >= filters['toilets'])
     
         return query.all()
     except Exception as e:

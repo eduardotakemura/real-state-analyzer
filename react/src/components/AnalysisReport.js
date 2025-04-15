@@ -3,25 +3,23 @@ import './AnalysisReport.css';
 
 const AnalysisReport = ({ data }) => {
     const [visibleComponents, setVisibleComponents] = useState({
-        typeSummary: false,
-        locSummary: false,
-        corrMatrix: false,
-        typeDist: false,
-        locPlots: false,
+        summary: false,
         clustersMap: false,
-        priceHeatmap: false
+        locSummary: false,
+        plots: false,
+        priceHeatmap: false,
+        operation: false,
+        entriesCount: false
     });
 
     useEffect(() => {
         // Show components in sequence with delays
         const delays = {
-            typeSummary: 0,
-            locSummary: 200,
-            corrMatrix: 400,
-            typeDist: 600,
-            locPlots: 800,
-            clustersMap: 1000,
-            priceHeatmap: 1200
+            summary: 0,
+            clustersMap: 200,
+            locSummary: 400,
+            plots: 600,
+            priceHeatmap: 800
         };
 
         Object.entries(delays).forEach(([component, delay]) => {
@@ -34,78 +32,25 @@ const AnalysisReport = ({ data }) => {
         });
     }, []);
 
-    const renderCorrelationMatrix = () => {
-        const matrix = data.corr_matrix;
-        const columns = Object.keys(matrix);
-
-        return (
-            <div className={`report-section ${visibleComponents.corrMatrix ? 'visible' : ''}`}>
-                <h3>Correlation Matrix</h3>
-                <table className="correlation-table">
-                    <thead>
-                        <tr>
-                            <th></th>
-                            {columns.map(col => (
-                                <th key={col}>{col}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {columns.map(row => (
-                            <tr key={row}>
-                                <th>{row}</th>
-                                {columns.map(col => (
-                                    <td key={`${row}-${col}`}>
-                                        {matrix[row][col].toFixed(2)}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        );
+    const formatNumber = (value) => {
+        if (typeof value !== 'number') return value;
+        return value.toLocaleString('de-DE');
     };
 
-    const renderTypeSummary = () => {
-        const summary = data.type_summary;
-        const columns = Object.keys(summary);
-
+    const renderSummary = () => {
         return (
-            <div className={`report-section ${visibleComponents.typeSummary ? 'visible' : ''}`}>
-                <h3>Property Type Summary</h3>
-                <table className="summary-table">
-                    <thead>
-                        <tr>
-                            {columns.map(col => (
-                                <th key={col}>{col}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {Object.keys(summary[columns[0]]).map(type => (
-                            <tr key={type}>
-                                {columns.map(col => {
-                                    const value = summary[col][type];
-                                    // Handle numeric values
-                                    if (typeof value === 'number') {
-                                        return (
-                                            <td key={`${type}-${col}`}>
-                                                {isNaN(value) ? '-' : value.toFixed(2)}
-                                            </td>
-                                        );
-                                    }
-                                    // Handle other values
-                                    return (
-                                        <td key={`${type}-${col}`}>
-                                            {value}
-                                        </td>
-                                    );
-                                })}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <div className={`report-section ${visibleComponents.summary ? 'visible' : ''}`}>
+                <h3 className="section-title">Analysis Summary</h3>
+                <div className="summary-box">
+                    <div className="summary-item">
+                        <span className="summary-label">Operation:</span>
+                        <span className="summary-value">{data.operation}</span>
+                    </div>
+                    <div className="summary-item">
+                        <span className="summary-label">Total Properties:</span>
+                        <span className="summary-value">{formatNumber(data.entries_count)}</span>
+                    </div>
+                </div>
             </div>
         );
     };
@@ -114,39 +59,51 @@ const AnalysisReport = ({ data }) => {
         const summary = data.loc_summary;
         const columns = Object.keys(summary);
 
+        // Filter out unwanted columns
+        const displayColumns = columns.filter(col =>
+            !['Dorms', 'Toilets', 'Garages', 'Count'].includes(col)
+        );
+
         return (
             <div className={`report-section ${visibleComponents.locSummary ? 'visible' : ''}`}>
-                <h3>Location Summary</h3>
+                <h3 className="section-title">Location Summary</h3>
+                <p className="section-subtitle">Detailed statistics for each location cluster</p>
                 <table className="summary-table">
                     <thead>
                         <tr>
-                            {columns.map(col => (
-                                <th key={col}>{col}</th>
-                            ))}
+                            {displayColumns.map(col => {
+                                const titles = {
+                                    'Location': 'Location',
+                                    'Price/sqm': 'Price/m²',
+                                    'Price': 'Average price',
+                                    'Size': 'Average size (m²)',
+                                    'Additional costs': 'Average additional costs',
+                                    'Apartment ratio': 'Apartment ratio (%)',
+                                    'House ratio': 'House ratio (%)'
+                                };
+                                return <th key={col}>{titles[col] || col}</th>;
+                            })}
                         </tr>
                     </thead>
                     <tbody>
                         {Object.keys(summary[columns[0]]).map(location => (
                             <tr key={location}>
-                                {columns.map(col => {
+                                {displayColumns.map(col => {
                                     const value = summary[col][location];
-                                    // Handle type_distribution object
-                                    if (col === 'type_distribution') {
-                                        return (
-                                            <td key={`${location}-${col}`}>
-                                                {`Apt: ${(value[1] * 100).toFixed(1)}%, House: ${(value[0] * 100).toFixed(1)}%`}
-                                            </td>
-                                        );
-                                    }
-                                    // Handle numeric values
                                     if (typeof value === 'number') {
+                                        if (col === 'Apartment ratio' || col === 'House ratio') {
+                                            return (
+                                                <td key={`${location}-${col}`}>
+                                                    {(value * 100).toFixed(0)}%
+                                                </td>
+                                            );
+                                        }
                                         return (
                                             <td key={`${location}-${col}`}>
-                                                {value.toFixed(2)}
+                                                {formatNumber(Math.round(value))}
                                             </td>
                                         );
                                     }
-                                    // Handle other values
                                     return (
                                         <td key={`${location}-${col}`}>
                                             {value}
@@ -163,37 +120,35 @@ const AnalysisReport = ({ data }) => {
 
     return (
         <div className="analysis-report">
-            {renderTypeSummary()}
-            {renderLocationSummary()}
-            {renderCorrelationMatrix()}
-
-            <div className={`report-section ${visibleComponents.typeDist ? 'visible' : ''}`}>
-                <h3>Property Type Distribution</h3>
-                <img
-                    src={`data:image/png;base64,${data.type_dist}`}
-                    alt="Property Type Distribution"
-                    className="analysis-image"
-                />
+            {renderSummary()}
+            <div
+                className={`report-section ${visibleComponents.clustersMap ? 'visible' : ''}`}
+            >
+                <h3 className="section-title">Location Clusters</h3>
+                <p className="section-subtitle">Geographic distribution of property clusters.</p>
+                <p className="section-subtitle">Navigate through the map to explore the location distribution.</p>
+                <div dangerouslySetInnerHTML={{ __html: data.clusters_map }} />
             </div>
 
-            <div className={`report-section ${visibleComponents.locPlots ? 'visible' : ''}`}>
-                <h3>Location Analysis</h3>
+            {renderLocationSummary()}
+
+            <div className={`report-section ${visibleComponents.plots ? 'visible' : ''}`}>
+                <h3 className="section-title">Location Analysis</h3>
+                <p className="section-subtitle">Visual analysis of property distribution and characteristics</p>
                 <img
-                    src={`data:image/png;base64,${data.loc_plots}`}
+                    src={`data:image/png;base64,${data.plots}`}
                     alt="Location Analysis Plots"
                     className="analysis-image"
                 />
             </div>
 
             <div
-                className={`report-section ${visibleComponents.clustersMap ? 'visible' : ''}`}
-                dangerouslySetInnerHTML={{ __html: data.clusters_map }}
-            />
-
-            <div
                 className={`report-section ${visibleComponents.priceHeatmap ? 'visible' : ''}`}
-                dangerouslySetInnerHTML={{ __html: data.price_heatmap }}
-            />
+            >
+                <h3 className="section-title">Price Distribution</h3>
+                <p className="section-subtitle">Heatmap showing price distribution across locations</p>
+                <div dangerouslySetInnerHTML={{ __html: data.price_heatmap }} />
+            </div>
         </div>
     );
 };

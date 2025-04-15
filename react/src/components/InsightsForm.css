@@ -21,8 +21,9 @@
     top: 1rem;
     right: 1rem;
     padding: 0.5rem 1rem;
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.9rem;
@@ -30,7 +31,7 @@
 }
 
 .reset-button:hover {
-    background-color: #e9ecef;
+    background-color: var(--primary-hover);
 }
 
 /* Range input styling */
@@ -79,6 +80,13 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
+
+.loading-text {
+    margin-left: 1rem;
+    font-size: 1.2rem;
+}
+
+
 
 @keyframes spin {
     0% { transform: rotate(0deg); }

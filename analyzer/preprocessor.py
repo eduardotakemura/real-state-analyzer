@@ -12,11 +12,9 @@ class Preprocessor:
     def __init__(self):
         self.data = None
         self.current_operation = None
-        self.drop_loc_outliers = True
-        self.distance_radius = None
+        self.distance_radius = 20
         self.k_cluster = None
         self.k_limit = 20
-        self.clusters_plot = False
         self.target = 'price'
         self.split_threshold = 0.05
         self.clusters_map = None
@@ -38,20 +36,18 @@ class Preprocessor:
         # Map types #
         self.data = self.map_types(self.data)
 
-        # Location Clustering #
-        self.data = self.drp_empty_loc(self.data)
-        ## Drop outliers #
-        if self.drop_loc_outliers:
-            self.data = self.drop_location_outliers(self.data, self.distance_radius)
+        # Drop location outliers #
+        self.data = self.drop_empty_loc(self.data)
+        self.data = self.drop_location_outliers(self.data)
 
         ## Clustering ##
-        self.data = self.location_clustering(self.data, self.k_cluster, self.k_limit, self.clusters_plot)
+        self.data = self.location_clustering(self.data, self.k_cluster, self.k_limit)
 
         # Generate the clusters map #
         self.clusters_map = self._create_clusters_map(self.data)
 
         # Generate the heat map #
-        self.price_heatmap = self.generate_price_heatmap(df)
+        self.price_heatmap = self.generate_price_heatmap(self.data)
 
         # Drop lat/lng features #
         self.data.drop(columns=['latitude', 'longitude'], inplace=True)
@@ -74,7 +70,7 @@ class Preprocessor:
         df = df.drop(features_to_drop, axis=1)
         return df
 
-    def drp_empty_loc(self, df):
+    def drop_empty_loc(self, df):
         # drop rows with empty location
         df = df[df['latitude'] != 0.0]
         df = df[df['longitude'] != 0.0]
@@ -82,7 +78,7 @@ class Preprocessor:
         return df
 
     def map_types(self, df):
-        # Casa = 0, Apartamento = 1, Terreno = 2, Comercial = 3, Fazenda = 4, Outros = 5
+        # Casa = 0, Apartamento = 1
         type_map = {
             'Casa': 0,
             'Apartamento': 1,
@@ -90,65 +86,57 @@ class Preprocessor:
             'Cobertura': 1,
             'Flat': 1,
             'Kitnet/Conjugado': 1,
-            'Lote/Terreno': 2,
+            'Lote/Terreno': 0,
             'Sobrado': 0,
-            'Edifício Residencial': 3,
-            'Fazenda/Sítios/Chácaras': 4,
-            'Consultório': 3,
-            'Galpão/Depósito/Armazém': 3,
-            'Imóvel Comercial': 3,
-            'Lote/Terreno': 2,
-            'Ponto Comercial/Loja/Box': 3,
-            'Sala/Conjunto': 3,
-            'Prédio/Edifício Inteiro': 3,
+            'Edifício Residencial': 0,
+            'Fazenda/Sítios/Chácaras': 0,
+            'Consultório': 0,
+            'Galpão/Depósito/Armazém': 0,
+            'Imóvel Comercial': 0,
+            'Lote/Terreno': 0,
+            'Ponto Comercial/Loja/Box': 0,
+            'Sala/Conjunto': 0,
+            'Prédio/Edifício Inteiro': 0,
         }
 
         # Map types #
         df['type'] = df['type'].map(type_map)
 
-        # Fill NaN with 5 = not defined maps
-        df['type'] = df['type'].fillna(5)
+         # Drop NaN
+        df = df.dropna(subset=['type'])
+
+        # Cast to int
+        df['type'] = df['type'].astype(int)
+        
         return df
 
-    def drop_location_outliers(self, df, distance_radius=None):
-        if distance_radius is None:
+    def drop_location_outliers(self, df):
+      from math import radians, cos, sin, asin, sqrt
 
-            # Dynamically set the radius based on the data spread #
-            lat_range = df['latitude'].max() - df['latitude'].min()
-            lng_range = df['longitude'].max() - df['longitude'].min()
-            max_range = max(lat_range, lng_range)
+      def haversine(lat1, lon1, lat2, lon2):
+          # Convert decimal degrees to radians 
+          lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+          # Haversine formula 
+          dlat = lat2 - lat1 
+          dlon = lon2 - lon1 
+          a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+          c = 2 * asin(sqrt(a)) 
+          r = 6371  # Radius of earth in kilometers
+          return c * r
 
-            # Set radius based on the max range #
-            if max_range < 1:  # Neighborhood
-                distance_radius = 2  # in km
-            elif max_range < 5:  # Small Cities
-                distance_radius = 10
-            elif max_range < 10:  # Large Cities
-                distance_radius = 20
-            else:  # Large area
-                distance_radius = 50
+      center_lat = df['latitude'].median()
+      center_lon = df['longitude'].median()
 
-        # Calculate margins based on the chosen distance radius
-        lat_margin = distance_radius / 110.574
-        lng_margin = distance_radius / (111.320 * np.cos(np.radians(df['latitude'].mean())))
+      df['distance_from_center'] = df.apply(
+          lambda row: haversine(center_lat, center_lon, row['latitude'], row['longitude']), axis=1
+      )
 
-        # Calculate bounds with a margin
-        lat_mean = df['latitude'].mean()
-        lng_mean = df['longitude'].mean()
+      df = df[df['distance_from_center'] <= self.distance_radius]
+      df = df.drop(columns='distance_from_center')
 
-        lat_min = lat_mean - lat_margin
-        lat_max = lat_mean + lat_margin
+      return df
 
-        lng_min = lng_mean - lng_margin
-        lng_max = lng_mean + lng_margin
-
-        # Filter rows that fall within the dynamically calculated bounds
-        df = df[(df['latitude'] >= lat_min) & (df['latitude'] <= lat_max)]
-        df = df[(df['longitude'] >= lng_min) & (df['longitude'] <= lng_max)]
-
-        return df
-
-    def location_clustering(self, df, k_cluster=None, k_limit=20, plot=False):
+    def location_clustering(self, df, k_cluster=None, k_limit=20):
         # Extract and Standardize features #
         x_scaled = self.standardize_location(df)
 
@@ -156,16 +144,12 @@ class Preprocessor:
         if k_cluster:
             kmeans = KMeans(n_clusters=k_cluster, random_state=0)
         else:
-            optimal_k = self.determine_optimal_k(x_scaled, k_limit, plot)
+            optimal_k = self.determine_optimal_k(x_scaled, k_limit)
             kmeans = KMeans(n_clusters=optimal_k, random_state=0)
             self.k_cluster = optimal_k
 
         # Merge with df #
         df['location'] = kmeans.fit_predict(x_scaled)
-
-        # Plot Clusters #
-        if plot:
-            self.plot_clusters(df)
 
         return df
 
@@ -176,21 +160,12 @@ class Preprocessor:
 
         return x_scaled
 
-    def determine_optimal_k(self, x_scaled, k_limit, plot=False):
+    def determine_optimal_k(self, x_scaled, k_limit):
         wcss = []
         for i in range(1, k_limit):
             kmeans = KMeans(n_clusters=i, n_init='auto', random_state=0)
             kmeans.fit(x_scaled)
             wcss.append(kmeans.inertia_)
-
-        if plot:
-            plt.figure(figsize=(10, 6))
-            plt.plot(range(1, k_limit), wcss, marker='o')
-            plt.title('The Elbow Method')
-            plt.xlabel('Number of clusters')
-            plt.ylabel('WCSS')
-            plt.grid(True)
-            plt.show()
 
         # Identify the elbow point (the optimal k) #
         optimal_k = self.find_elbow_point(wcss)
@@ -200,14 +175,6 @@ class Preprocessor:
         kl = KneeLocator(range(1, len(wcss) + 1), wcss, curve='convex', direction='decreasing')
         optimal_k = kl.elbow
         return optimal_k
-
-    def plot_clusters(self, df):
-        plt.scatter(df['latitude'], df['longitude'], c=df['location'], cmap='viridis')
-        plt.colorbar(label='Cluster')
-        plt.xlabel('Latitude')
-        plt.ylabel('Longitude')
-        plt.title('Result Clustering')
-        plt.show()
 
     def _create_clusters_map(self, df):
         """Create a folium map with observation points, highlighting clusters, and save it."""
@@ -246,7 +213,6 @@ class Preprocessor:
 
         legend_html += '</div>'
         mymap.get_root().html.add_child(folium.Element(legend_html))
-        #mymap.save('clusters_map.html')
 
         return mymap._repr_html_()
 
@@ -262,7 +228,6 @@ class Preprocessor:
         # Prepare data for heatmap
         heat_data = [[row['latitude'], row['longitude'], row['price']] for index, row in df.iterrows()]
         HeatMap(heat_data).add_to(price_heatmap)
-        #price_heatmap.save('price_heatmap.html')
 
         return price_heatmap._repr_html_()
 
@@ -274,4 +239,3 @@ class Preprocessor:
         upper_bound = Q3 + self.outliers_config['multiplier'] * IQR
 
         return df[~((df < lower_bound) | (df > upper_bound)).any(axis=1)]
-
