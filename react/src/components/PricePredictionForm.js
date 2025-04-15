@@ -1,14 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import SelectionField from './SelectionField.js';
 import './PricePredictionForm.css';
 
 const PricePredictionForm = () => {
+    const [canSubmit, setCanSubmit] = useState(false);
     const [formData, setFormData] = useState({
+        operation: 'selling',
+        type: 1,
         location: '',
         size: '',
         dorms: '',
         toilets: '',
         garage: ''
     });
+
+    const validateForm = (data) => {
+        return (
+            data.operation !== '' &&
+            data.type !== '' &&
+            data.location !== '' &&
+            data.size !== '' &&
+            data.dorms !== '' &&
+            data.toilets !== '' &&
+            data.garage !== ''
+        );
+    };
+
+    useEffect(() => {
+        setCanSubmit(validateForm(formData));
+    }, [formData]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -44,8 +64,32 @@ const PricePredictionForm = () => {
 
             {/* Row 2: Size, Bedrooms, Bathrooms, Garage */}
             <div className="form-row">
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label htmlFor="size">Size (m²)</label>
+                <SelectionField
+                    id="operation"
+                    title="Select Desired Operation (Selling/Renting)"
+                    options={[
+                        { value: 'selling', label: 'Selling' },
+                        { value: 'renting', label: 'Renting' }
+                    ]}
+                    selectedValue={formData.operation}
+                    onChange={handleChange}
+                    required={true}
+                />
+
+                <SelectionField
+                    id="type"
+                    title="Select Property Type"
+                    options={[{ value: 1, label: 'Apartment' }, { value: 0, label: 'House' }]}
+                    selectedValue={formData.type}
+                    onChange={handleChange}
+                    required={true}
+                />
+            </div>
+
+            {/* Row 3: Size, Bedrooms, Bathrooms, Garage */}
+            <div className="form-row">
+                <div className="form-group required">
+                    <label className="required">Size (m²)</label>
                     <input
                         type="number"
                         id="size"
@@ -58,8 +102,8 @@ const PricePredictionForm = () => {
                     />
                 </div>
 
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label htmlFor="dorms">Bedrooms</label>
+                <div className="form-group required">
+                    <label className="required">Bedrooms</label>
                     <input
                         type="number"
                         id="dorms"
@@ -72,8 +116,8 @@ const PricePredictionForm = () => {
                     />
                 </div>
 
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label htmlFor="toilets">Bathrooms</label>
+                <div className="form-group required">
+                    <label className="required">Bathrooms</label>
                     <input
                         type="number"
                         id="toilets"
@@ -86,8 +130,8 @@ const PricePredictionForm = () => {
                     />
                 </div>
 
-                <div className="form-group" style={{ flex: 1 }}>
-                    <label htmlFor="garage">Garage Spaces</label>
+                <div className="form-group required">
+                    <label className="required">Garage Spaces</label>
                     <input
                         type="number"
                         id="garage"
@@ -101,7 +145,7 @@ const PricePredictionForm = () => {
                 </div>
             </div>
 
-            <button type="submit" className="submit-button">
+            <button type="submit" className={`submit-button ${canSubmit ? '' : 'disabled'}`} disabled={!canSubmit}>
                 Predict Price
             </button>
         </form>
