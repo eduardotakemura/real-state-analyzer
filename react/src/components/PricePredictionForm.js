@@ -2,17 +2,99 @@ import React, { useState, useEffect } from 'react';
 import SelectionField from './SelectionField.js';
 import './PricePredictionForm.css';
 
+const LoadingOverlay = () => (
+    <div className="loading-overlay">
+        <div className="loading-spinner">
+        </div>
+        <div className="loading-text">
+            Loading your data, it will take just a few seconds...
+        </div>
+    </div>
+);
+
 const PricePredictionForm = () => {
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [canSubmit, setCanSubmit] = useState(false);
+    const [options, setOptions] = useState([]);
+    const [availableOperations, setAvailableOperations] = useState([]);
+    const [availableLocations, setAvailableLocations] = useState([]);
+    const [availableTypes] = useState([
+        { label: 'Apartment', value: 1 },
+        { label: 'House', value: 0 }
+    ]);
     const [formData, setFormData] = useState({
-        operation: 'selling',
-        type: 1,
+        operation: '',
+        type: availableTypes[0].value,
         location: '',
         size: '',
         dorms: '',
         toilets: '',
-        garage: ''
+        garage: '',
+        map: ''
     });
+
+    // Fetch models options
+    useEffect(() => {
+        setIsLoading(true);
+        fetch('http://localhost:8000/price-models')
+            .then(response => response.json())
+            .then(data => {
+                const options = data.map(option => ({
+                    operation: option.operation,
+                    locations: option.k_clusters,
+                    map: option.clusters_map,
+                }));
+                setOptions(options);
+
+                // Set available operations
+                const operations = options.map(opt => ({
+                    label: opt.operation.charAt(0).toUpperCase() + opt.operation.slice(1),
+                    value: opt.operation
+                }));
+                setAvailableOperations(operations);
+
+                // Set initial operation and location if options exist
+                if (options.length > 0) {
+                    const firstOperation = options[0];
+                    const initialLocations = Array.from({ length: firstOperation.locations }, (_, i) => ({
+                        label: `Location ${i}`,
+                        value: i.toString()
+                    }));
+
+                    setAvailableLocations(initialLocations);
+                    setFormData(prev => ({
+                        ...prev,
+                        operation: firstOperation.operation,
+                        location: '0', // Set first location
+                        map: firstOperation.map
+                    }));
+                }
+            })
+            .finally(() => setIsLoading(false));
+    }, []);
+
+    // Update available locations when operation changes
+    useEffect(() => {
+        if (formData.operation) {
+            const selectedOption = options.find(opt => opt.operation === formData.operation);
+            if (selectedOption) {
+                // Generate location options based on k_clusters
+                const locations = Array.from({ length: selectedOption.locations }, (_, i) => ({
+                    label: `Location ${i}`,
+                    value: i.toString()
+                }));
+                setAvailableLocations(locations);
+                // Update map in formData
+                setFormData(prev => ({
+                    ...prev,
+                    map: selectedOption.map
+                }));
+            }
+        } else {
+            setAvailableLocations([]);
+        }
+    }, [formData.operation, options]);
 
     const validateForm = (data) => {
         return (
@@ -22,7 +104,8 @@ const PricePredictionForm = () => {
             data.size !== '' &&
             data.dorms !== '' &&
             data.toilets !== '' &&
-            data.garage !== ''
+            data.garage !== '' &&
+            data.map !== ''
         );
     };
 
@@ -40,115 +123,121 @@ const PricePredictionForm = () => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
         // TODO: Implement API call to backend for price prediction
         console.log('Form submitted:', formData);
+        // Simulate API call
+        setTimeout(() => {
+            setIsSubmitting(false);
+        }, 2000);
     };
 
     return (
-        <form onSubmit={handleSubmit} className="prediction-form">
-            {/* Row 1: Location */}
-            <div className="form-row">
-                <div className="form-group required">
-                    <label className="required">Location</label>
-                    <input
-                        type="text"
+        <div className="form-container">
+            {isLoading && <LoadingOverlay />}
+            {isSubmitting && <LoadingOverlay />}
+
+            <form onSubmit={handleSubmit} className="prediction-form">
+                {/* Row 1: Operation and Type */}
+                <div className="form-row">
+                    <SelectionField
+                        id="operation"
+                        name="operation"
+                        title="Select Operation"
+                        options={availableOperations}
+                        selectedValue={formData.operation}
+                        onChange={handleChange}
+                        required={true}
+                    />
+
+                    <SelectionField
+                        id="type"
+                        name="type"
+                        title="Select Property Type"
+                        options={availableTypes}
+                        selectedValue={formData.type}
+                        onChange={handleChange}
+                        required={true}
+                    />
+                </div>
+
+                {/* Row 2: Location */}
+                <div className="form-row">
+                    <SelectionField
                         id="location"
                         name="location"
-                        value={formData.location}
+                        title="Select Location"
+                        options={availableLocations}
+                        selectedValue={formData.location}
                         onChange={handleChange}
-                        placeholder="Enter property location"
-                        className="location-input"
-                    />
-                </div>
-            </div>
-
-            {/* Row 2: Size, Bedrooms, Bathrooms, Garage */}
-            <div className="form-row">
-                <SelectionField
-                    id="operation"
-                    title="Select Desired Operation (Selling/Renting)"
-                    options={[
-                        { value: 'selling', label: 'Selling' },
-                        { value: 'renting', label: 'Renting' }
-                    ]}
-                    selectedValue={formData.operation}
-                    onChange={handleChange}
-                    required={true}
-                />
-
-                <SelectionField
-                    id="type"
-                    title="Select Property Type"
-                    options={[{ value: 1, label: 'Apartment' }, { value: 0, label: 'House' }]}
-                    selectedValue={formData.type}
-                    onChange={handleChange}
-                    required={true}
-                />
-            </div>
-
-            {/* Row 3: Size, Bedrooms, Bathrooms, Garage */}
-            <div className="form-row">
-                <div className="form-group required">
-                    <label className="required">Size (m²)</label>
-                    <input
-                        type="number"
-                        id="size"
-                        name="size"
-                        value={formData.size}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Enter size"
-                        required
+                        required={true}
                     />
                 </div>
 
-                <div className="form-group required">
-                    <label className="required">Bedrooms</label>
-                    <input
-                        type="number"
-                        id="dorms"
-                        name="dorms"
-                        value={formData.dorms}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of bedrooms"
-                        required
-                    />
+                {/* Row 3: Size, Bedrooms, Bathrooms, Garage */}
+                <div className="form-row">
+                    <div className="form-group required">
+                        <label className="required">Size (m²)</label>
+                        <input
+                            type="number"
+                            id="size"
+                            name="size"
+                            value={formData.size}
+                            onChange={handleChange}
+                            min="0"
+                            placeholder="Enter size"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group required">
+                        <label className="required">Bedrooms</label>
+                        <input
+                            type="number"
+                            id="dorms"
+                            name="dorms"
+                            value={formData.dorms}
+                            onChange={handleChange}
+                            min="0"
+                            placeholder="Number of bedrooms"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group required">
+                        <label className="required">Bathrooms</label>
+                        <input
+                            type="number"
+                            id="toilets"
+                            name="toilets"
+                            value={formData.toilets}
+                            onChange={handleChange}
+                            min="0"
+                            placeholder="Number of bathrooms"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group required">
+                        <label className="required">Garage Spaces</label>
+                        <input
+                            type="number"
+                            id="garage"
+                            name="garage"
+                            value={formData.garage}
+                            onChange={handleChange}
+                            min="0"
+                            placeholder="Number of garage spaces"
+                            required
+                        />
+                    </div>
                 </div>
 
-                <div className="form-group required">
-                    <label className="required">Bathrooms</label>
-                    <input
-                        type="number"
-                        id="toilets"
-                        name="toilets"
-                        value={formData.toilets}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of bathrooms"
-                        required
-                    />
-                </div>
-
-                <div className="form-group required">
-                    <label className="required">Garage Spaces</label>
-                    <input
-                        type="number"
-                        id="garage"
-                        name="garage"
-                        value={formData.garage}
-                        onChange={handleChange}
-                        min="0"
-                        placeholder="Number of garage spaces"
-                        required
-                    />
-                </div>
-            </div>
-
-            <button type="submit" className={`submit-button ${canSubmit ? '' : 'disabled'}`} disabled={!canSubmit}>
-                Predict Price
-            </button>
-        </form>
+                <button type="submit" className={`submit-button ${!canSubmit ? 'disabled' : ''}`} disabled={!canSubmit}>
+                    Predict Price
+                </button>
+            </form>
+        </div>
     );
 };
 
