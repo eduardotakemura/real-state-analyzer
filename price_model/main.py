@@ -39,7 +39,6 @@ try:
         print(f" [*] Training Task received")
         # Run training
         result = run_training(json.loads(body))
-        print(f"[*] Training result: {result}")
             
         # Send response
         channel.basic_publish(

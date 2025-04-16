@@ -75,7 +75,7 @@ def training_callback(ch, method, properties, body):
         if isinstance(body, str):
             try:
                 decoded_body = json.loads(body)
-                logger.info(f"Received Training response: {decoded_body}")
+                logger.info(f"Received Training response: {decoded_body['status']}")
             except json.JSONDecodeError:
                 logger.error("Failed to decode JSON from training response")
     except Exception as e:
