@@ -30,11 +30,19 @@ def run_training(filters: dict):
         # Train models
         price_model.models_training(df_preprocessed, operation)
         
-        return True
+        return {
+            "status": "success",
+            "operation": operation,
+            "clusters_map": str(preprocessor.clusters_map),
+            "k_clusters": int(preprocessor.k_clusters)
+        }
         
     except Exception as e:
         print(f"Error in training loop: {e}")
-        return e
+        return {
+            "status": "error",
+            "message": str(e)
+        }
 
 def make_prediction(input_data):
     try:

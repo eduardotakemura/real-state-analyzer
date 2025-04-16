@@ -39,17 +39,13 @@ try:
         print(f" [*] Training Task received")
         # Run training
         result = run_training(json.loads(body))
-        
-        if result:
-            response = "Training completed"
-        else:
-            response = "Training failed"
+        print(f"[*] Training result: {result}")
             
         # Send response
         channel.basic_publish(
             exchange='',
             routing_key='training_response_queue',
-            body=json.dumps(response),
+            body=json.dumps(result),
             properties=pika.BasicProperties(delivery_mode=2)
         )
 
