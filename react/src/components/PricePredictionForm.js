@@ -12,9 +12,28 @@ const LoadingOverlay = () => (
     </div>
 );
 
+const MapModal = ({ mapHtml, onClose }) => (
+    <div className="map-modal-overlay">
+        <div className="map-modal-content">
+            <button className="map-modal-close" onClick={onClose}>×</button>
+            <div className="map-description">
+                <h3>Location Clusters Visualization</h3>
+                <p>
+                    This map displays the geographical distribution of properties used in our model training.
+                    Each color represents a different location cluster, which groups properties with similar
+                    geographical characteristics. These clusters help us understand how location impacts
+                    property values in different areas of the city.
+                </p>
+            </div>
+            <div className="map-container" dangerouslySetInnerHTML={{ __html: mapHtml }} />
+        </div>
+    </div>
+);
+
 const PricePredictionForm = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showMap, setShowMap] = useState(false);
     const [canSubmit, setCanSubmit] = useState(false);
     const [options, setOptions] = useState([]);
     const [availableOperations, setAvailableOperations] = useState([]);
@@ -132,10 +151,19 @@ const PricePredictionForm = () => {
         }, 2000);
     };
 
+    const handleShowMap = () => {
+        setShowMap(true);
+    };
+
+    const handleCloseMap = () => {
+        setShowMap(false);
+    };
+
     return (
         <div className="form-container">
             {isLoading && <LoadingOverlay />}
             {isSubmitting && <LoadingOverlay />}
+            {showMap && <MapModal mapHtml={formData.map} onClose={handleCloseMap} />}
 
             <form onSubmit={handleSubmit} className="prediction-form">
                 {/* Row 1: Operation and Type */}
@@ -163,15 +191,25 @@ const PricePredictionForm = () => {
 
                 {/* Row 2: Location */}
                 <div className="form-row">
-                    <SelectionField
-                        id="location"
-                        name="location"
-                        title="Select Location"
-                        options={availableLocations}
-                        selectedValue={formData.location}
-                        onChange={handleChange}
-                        required={true}
-                    />
+                    <div className="location-container">
+                        <SelectionField
+                            id="location"
+                            name="location"
+                            title="Select Location"
+                            options={availableLocations}
+                            selectedValue={formData.location}
+                            onChange={handleChange}
+                            required={true}
+                        />
+                        <button
+                            type="button"
+                            className="map-button"
+                            onClick={handleShowMap}
+                            disabled={!formData.operation}
+                        >
+                            Check Location Map
+                        </button>
+                    </div>
                 </div>
 
                 {/* Row 3: Size, Bedrooms, Bathrooms, Garage */}
@@ -241,4 +279,4 @@ const PricePredictionForm = () => {
     );
 };
 
-export default PricePredictionForm; 
+export default PricePredictionForm;
