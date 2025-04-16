@@ -49,7 +49,7 @@ try:
         channel.basic_publish(
             exchange='',
             routing_key='training_response_queue',
-            body=response,
+            body=json.dumps(response),
             properties=pika.BasicProperties(delivery_mode=2)
         )
 
@@ -59,12 +59,13 @@ try:
 
         # Make prediction
         prediction = make_prediction(json.loads(body))
+        print(f"[*] Prediction: {prediction}")
 
         # Send response
         channel.basic_publish(
             exchange='',
             routing_key='price_prediction_response_queue',
-            body=f"Price prediction completed: {prediction}",
+            body=json.dumps(prediction),
             properties=pika.BasicProperties(delivery_mode=2)
         )
     

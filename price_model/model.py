@@ -6,13 +6,14 @@ import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Embedding, Flatten, Concatenate
 from tensorflow.keras.models import Model
 import pickle
-import geohash
 import os
 
 class PriceModel:
     def __init__(self):
         self.df = None
         self.operation = None
+        self.clusters_map = None
+        self.k_clusters = None
         self.dataset = None
         self.additional_dataset = None
         self.embedding_vector_size = 10
@@ -34,10 +35,8 @@ class PriceModel:
         self.additional_model = None
         self.features_scaler = None
         self.target_scaler = None
-        self.label_encoder = None
         self.training_cols = None
         self.additional_training_cols = None
-        
 
     def models_training(self, df, operation):
         # Load reference dataframe
@@ -53,24 +52,24 @@ class PriceModel:
             self.df['price']
             )
 
-        # Split additonal price predictor set
+        # Split additional price predictor set
         self.additional_dataset, self.additional_training_cols = self.split_data(
             self.df.drop(columns=['additional_costs','price']),
             self.df['additional_costs']
             )
-        
+
         # Train price predictor ANN #
         self.price_model = self.train_ann(self.training_cols, self.dataset)
 
         # Train additional costs predictor ANN #
         self.additional_model = self.train_ann(self.additional_training_cols, self.additional_dataset)
 
-        # Save training results #
+        # # Save training results #
         self.save_models()
 
     def preprocess_data(self):
         # Convert location using dummies #
-        self.convert_geohash()
+        self.convert_location()
 
         # Standardize numeric features #
         self.standardize_features()
@@ -78,10 +77,17 @@ class PriceModel:
         # Hot encode type col #
         self.encode_types()
 
-    def convert_geohash(self):
-        self.label_encoder = LabelEncoder()
-        self.df['location'] = self.label_encoder.fit_transform(self.df['geohash'])
-        self.df.drop(['geohash'], axis=1, inplace=True)
+    def convert_location(self):
+        """ Convert location using one-hot encoding dummies """
+        # Get dummies
+        location_dummies = pd.get_dummies(self.df['location'], prefix='location', drop_first=False)
+
+        # Map to 0 and 1
+        location_dummies = location_dummies.map(lambda x: 1 if x > 0 else 0)
+
+        # Update df
+        self.df = pd.concat([self.df, location_dummies], axis=1)
+        self.df.drop(['location'], axis=1, inplace=True)
 
     def standardize_features(self):
         """Standardizes the numeric features in the DataFrame."""
@@ -118,51 +124,36 @@ class PriceModel:
         return {'X_train': X_train, 'X_valid':X_valid, 'X_test':X_test, 'y_train':y_train, 'y_valid':y_valid, 'y_test':y_test}, training_cols
 
     def train_ann(self, training_cols, dataset):
-        """Trains an Artificial Neural Network with geohash embeddings."""
-        # Inputs
-        geohash_input = Input(shape=(1,), name="geohash")
-        numeric_inputs = Input(shape=(len(training_cols)-1,), name="numeric_features")  # Excluding geohash
+        """Trains an Artificial Neural Network"""
 
-        # Geohash Embedding
-        geohash_emb = Embedding(
-            input_dim=len(self.label_encoder.classes_),  # Unique geohashes
-            output_dim= self.embedding_vector_size
-        )(geohash_input)
-        geohash_emb = Flatten()(geohash_emb)
-
-        # Merge geohash embedding with other inputs
-        merged = Concatenate()([geohash_emb, numeric_inputs])
+        # Define input layer
+        input_layer = Input(shape=(len(training_cols),))
+        x = input_layer
 
         # Stack ANN layers dynamically
-        x = merged
-        for layer in self.ann_layers:
-            x = Dense(units=layer[1], activation=layer[0])(x)
+        for activation, units in self.ann_layers:
+            x = Dense(units=units, activation=activation)(x)
 
-        # Build model
-        ann_model = Model(inputs=[geohash_input, numeric_inputs], outputs=x)
+        # Build and compile model
+        model = Model(inputs=input_layer, outputs=x)
+        model.compile(optimizer='adam', loss='mean_squared_error')
 
-        # Compile model
-        ann_model.compile(optimizer='adam', loss='mean_squared_error')
+        # Prepare input features
+        X_train = dataset['X_train'][training_cols].values
+        X_valid = dataset['X_valid'][training_cols].values
 
-        # Prepare inputs for training dataset
-        X_train_numeric = dataset['X_train'].drop(columns=['location']).values
-        X_train_geohash = dataset['X_train']['location'].values
-
-        X_valid_numeric = dataset['X_valid'].drop(columns=['location']).values
-        X_valid_geohash = dataset['X_valid']['location'].values
-
-        # Fit model #
-        ann_model.fit(
-            [X_train_geohash, X_train_numeric],
+        # Fit the model
+        model.fit(
+            X_train,
             dataset['y_train'],
             epochs=self.ann_epochs,
             batch_size=self.ann_bs,
-            validation_data=([X_valid_geohash, X_valid_numeric], dataset['y_valid']),
+            validation_data=(X_valid, dataset['y_valid']),
             callbacks=[self.ann_early_stopping],
             verbose=0
         )
 
-        return ann_model
+        return model
 
     def save_models(self):
       """Saves trained models, encoders, and column info."""
@@ -179,10 +170,17 @@ class PriceModel:
 
       with open(f'{base_dir}/encoders.pkl', 'wb') as file:
           pickle.dump({
-              'label_encoder': self.label_encoder,
               'features_scaler': self.features_scaler,
               'target_scaler': self.target_scaler
           }, file)
+
+      if self.clusters_map and self.k_clusters:
+        # Save location info
+        with open(f'{base_dir}/location.pkl', 'wb') as file:
+            pickle.dump({
+                'clusters_map': self.clusters_map,
+                'k_clusters': self.k_clusters
+            }, file)
 
     def load_models(self, operation):
         try:
@@ -199,10 +197,15 @@ class PriceModel:
 
             with open(f'{base_dir}/encoders.pkl', 'rb') as file:
                 encoders = pickle.load(file)
-                self.label_encoder = encoders['label_encoder']
                 self.features_scaler = encoders['features_scaler']
                 self.target_scaler = encoders['target_scaler']
 
+            with open(f'{base_dir}/location.pkl', 'rb') as file:
+                location_data = pickle.load(file)
+                self.k_clusters = location_data['k_clusters']
+                if self.k_clusters is None:
+                  raise Exception("k_clusters not found in location data")
+            
         except Exception as e:
             print(f"Error loading models: {e}")
             raise Exception("Error in loading models")
@@ -212,74 +215,65 @@ class PriceModel:
         try:
             if not input_data["operation"] or input_data["operation"] == "":
                 raise Exception("Operation not sent")
-                
-            # Load models
+
+            # Load models and scalers
             self.load_models(input_data["operation"])
 
-            def encode_location(gh):
-                """Encodes geohash, handling unknown values by finding the closest known one."""
-                try:
-                    return self.label_encoder.transform([gh])[0]
-                except ValueError:
-                    # Find closest known geohash
-                    lat, lon = geohash.decode(gh)
-                    closest_geohash = min(self.label_encoder.classes_, key=lambda known_gh: 
-                        ((lat - geohash.decode(known_gh)[0]) ** 2 + (lon - geohash.decode(known_gh)[1]) ** 2) ** 0.5
-                    )
-                    return self.label_encoder.transform([closest_geohash])[0]
-            
-            # Encode location
-            geohash_code = geohash.encode(input_data['location'][0], input_data['location'][1], precision=8)
-            location_encoded = encode_location(geohash_code)
-            
-            # Create feature arrays for additional costs prediction
-            additional_features = np.array([[
+            # Prepare numeric and categorical input
+            numeric_features = np.array([[
                 input_data['size'],
                 input_data['dorms'],
                 input_data['toilets'],
-                input_data['garage'],  
-                0, # Initial dummy value
+                input_data['garage'],
+                0  # placeholder for additional_costs
             ]])
-            
-            # Standardize numeric features
-            additional_numeric_scaled = self.features_scaler.transform(additional_features)
 
-            # Reshape types list
-            types_feature = np.array(input_data['type']).reshape(1, -1)
-            
-            # Combine features into array
-            additional_features_array = np.concatenate([
-                additional_numeric_scaled[:, :-1],  # all except additional costs
-                types_feature
-            ], axis=1)
-        
-            # Predict additional costs
-            additional_costs_pred = self.additional_model.predict([
-                np.array([[location_encoded]]), # location = Embedding
-                additional_features_array # features
-            ])
-        
-            # Create feature arrays for price prediction (including predicted additional costs)
-            price_features_array = np.concatenate([
-                additional_numeric_scaled[:, :-1], 
-                np.array([[additional_costs_pred[0][0]]]),
-                types_feature
-            ], axis=1)
-            
-            # Predict price
-            price_pred = self.price_model.predict([
-                np.array([[location_encoded]]),
-                price_features_array
-            ])
-            
-            # Inverse transform both predictions
-            price_pred_original = self.target_scaler.inverse_transform(price_pred)[0][0]
-            additional_cost_original = self.features_scaler.inverse_transform([[0,0,0,0,additional_costs_pred[0][0]]])[0][0]
+            # Scale numeric features
+            numeric_scaled = self.features_scaler.transform(numeric_features)
 
+            # Prepare location vector (one-hot)
+            location_vector = np.zeros((1, self.k_clusters))
+            loc_idx = input_data['location']
+            if 0 <= loc_idx < self.k_clusters:
+                location_vector[0, loc_idx] = 1
+            else:
+                raise Exception(f"Invalid location index: {loc_idx}")
+
+            # Prepare type vector (already one-hot encoded)
+            types_vector = np.array(input_data['type']).reshape(1, -1)
+
+            # --- Predict additional costs ---
+            additional_input = np.concatenate([
+                numeric_scaled[:, :-1],  # exclude placeholder additional_costs
+                location_vector,
+                types_vector
+            ], axis=1)
+
+            additional_pred = self.additional_model.predict(additional_input, verbose=0)
+
+            # Add predicted additional_costs to the scaled numeric features
+            numeric_scaled[0, -1] = additional_pred[0][0]
+
+            # --- Predict price ---
+            price_input = np.concatenate([
+                numeric_scaled,
+                location_vector,
+                types_vector
+            ], axis=1)
+
+            price_pred = self.price_model.predict(price_input, verbose=0)
+
+            # Inverse transform predictions
+            price = self.target_scaler.inverse_transform(price_pred)[0][0]
+            additional_cost = self.features_scaler.inverse_transform([[0, 0, 0, 0, additional_pred[0][0]]])[0][4]
+
+            # Convert np to int
             return {
-                'predicted_price': np.round(price_pred_original, 0),
-                'predicted_additional_costs': np.round(additional_cost_original,0)
+                'predicted_price': int(np.round(price, 0)),
+                'predicted_additional_costs': int(np.round(additional_cost, 0))
             }
+
         except Exception as e:
             print(f"Error making prediction: {e}")
             return 'Error in making prediction'
+

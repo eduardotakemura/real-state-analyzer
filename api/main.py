@@ -77,6 +77,11 @@ def initial_options(db: Session = Depends(get_db)):
 def properties_options(db: Session = Depends(get_db), operation: str = Path(..., description="Operation")):
     return crud.get_properties_options(db, operation)
 
+# # Get price models options
+# @app.get("/models/options")
+# def models_options(db: Session = Depends(get_db)):
+#     return crud.get_models_options(db)
+
 ## ---------------- Properties Routes ---------------- ##
 # Get all properties
 @app.get("/properties")

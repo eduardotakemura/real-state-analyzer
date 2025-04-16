@@ -50,15 +50,50 @@ def analyzer_callback(ch, method, properties, body):
         logger.error(f"Error in analyzer_callback: {e}")
     
 def price_prediction_callback(ch, method, properties, body):
-    decoded_body = json.loads(body)
-    logger.info(f"Received Price Prediction response: {decoded_body}")
+    try:
+        # Decode the body if it's bytes
+        if isinstance(body, bytes):
+            body = body.decode('utf-8')
+        
+        # Parse the JSON if it's a string
+        if isinstance(body, str):
+            try:
+                decoded_body = json.loads(body)
+                logger.info(f"Received Price Prediction response: {decoded_body}")
+            except json.JSONDecodeError:
+                logger.error("Failed to decode JSON from price prediction response")
+    except Exception as e:
+        logger.error(f"Error in price_prediction_callback: {e}")
 
 def training_callback(ch, method, properties, body):
-    decoded_body = json.loads(body)
-    logger.info(f"Received Training response: {decoded_body}")
-
+    try:
+        # Decode the body if it's bytes
+        if isinstance(body, bytes):
+            body = body.decode('utf-8')
+        
+        # Parse the JSON if it's a string
+        if isinstance(body, str):
+            try:
+                decoded_body = json.loads(body)
+                logger.info(f"Received Training response: {decoded_body}")
+            except json.JSONDecodeError:
+                logger.error("Failed to decode JSON from training response")
+    except Exception as e:
+        logger.error(f"Error in training_callback: {e}")
 
 def scraper_callback(ch, method, properties, body):
-    decoded_body = json.loads(body)
-    logger.info(f"Received Scraper response: {decoded_body}")
+    try:
+        # Decode the body if it's bytes
+        if isinstance(body, bytes):
+            body = body.decode('utf-8')
+        
+        # Parse the JSON if it's a string
+        if isinstance(body, str):
+            try:
+                decoded_body = json.loads(body)
+                logger.info(f"Received Scraper response: {decoded_body}")
+            except json.JSONDecodeError:
+                logger.error("Failed to decode JSON from scraper response")
+    except Exception as e:
+        logger.error(f"Error in scraper_callback: {e}")
 

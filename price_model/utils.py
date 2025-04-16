@@ -22,8 +22,12 @@ def run_training(filters: dict):
         preprocessor = Preprocessor()
         df_preprocessed = preprocessor.process_df(df)
         
-        # Train model
+        #  Load location data
         price_model = PriceModel()
+        price_model.clusters_map = preprocessor.clusters_map
+        price_model.k_clusters = preprocessor.k_clusters
+
+        # Train models
         price_model.models_training(df_preprocessed, operation)
         
         return True

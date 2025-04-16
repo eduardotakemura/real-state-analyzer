@@ -1,11 +1,17 @@
-import geohash
 from scipy.stats.mstats import winsorize
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from kneed import KneeLocator
+import folium
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 class Preprocessor:
     def __init__(self):
         self.data = None
         self.current_operation = None
-        self.geohash_precision = 8
+        self.clusters_map = None
+        self.k_clusters = None
 
     def process_df(self, df):
         """ Full pipeline to process the data. """
@@ -21,11 +27,20 @@ class Preprocessor:
         # Map type feature #
         self.data = self.map_types(self.data)
 
+        # Remove location outliers #
+        self.data = self.drop_location_outliers(self.data)
+
+        ## Clustering ##
+        self.data = self.location_clustering(self.data)
+
+        # Generate the clusters map #
+        self.clusters_map = self._create_clusters_map(self.data)
+
+        # Drop lat,lng #
+        self.data = self.data.drop(['latitude', 'longitude'], axis=1)
+
         # Remove outliers #
         self.data = self.remove_outliers(self.data)
-
-        # Geohash location
-        self.data = self.geohash_location(self.data, self.geohash_precision)
 
         return self.data
 
@@ -74,13 +89,117 @@ class Preprocessor:
 
         return df
 
-    def geohash_location(self, df, precision):
-        df['geohash'] = df.apply(lambda row: geohash.encode(row['latitude'], row['longitude'], precision=precision), axis=1)
-        df.drop(['latitude', 'longitude'], axis=1, inplace=True)
+    def location_clustering(self, df, k_cluster=None, k_limit=20):
+        # Extract and Standardize features #
+        x_scaled = self.standardize_location(df)
+
+        # Apply K-Means clustering with the optimal number of clusters or requested k value #
+        if k_cluster:
+            kmeans = KMeans(n_clusters=k_cluster, random_state=0)
+        else:
+            optimal_k = self.determine_optimal_k(x_scaled, k_limit)
+            kmeans = KMeans(n_clusters=optimal_k, random_state=0)
+            self.k_clusters = optimal_k
+
+        # Merge with df #
+        df['location'] = kmeans.fit_predict(x_scaled)
+
         return df
 
-    def remove_outliers(self, df):
-        for col in df.select_dtypes(include=['number']).columns:
-            df[col] = winsorize(df[col], limits=[0.05, 0.05])
-        
-        return df
+    def standardize_location(self, df):
+        x = df[['latitude', 'longitude']]
+        scaler = StandardScaler()
+        x_scaled = scaler.fit_transform(x)
+
+        return x_scaled
+
+    def determine_optimal_k(self, x_scaled, k_limit):
+        wcss = []
+        for i in range(1, k_limit):
+            kmeans = KMeans(n_clusters=i, n_init='auto', random_state=0)
+            kmeans.fit(x_scaled)
+            wcss.append(kmeans.inertia_)
+
+        # Identify the elbow point (the optimal k) #
+        optimal_k = self.find_elbow_point(wcss)
+        return optimal_k
+
+    def find_elbow_point(self, wcss):
+        kl = KneeLocator(range(1, len(wcss) + 1), wcss, curve='convex', direction='decreasing')
+        optimal_k = kl.elbow
+        return optimal_k
+
+    def _create_clusters_map(self, df):
+        """Create a folium map with observation points, highlighting clusters, and save it."""
+        map_center = [df['latitude'].mean(), df['longitude'].mean()]
+        mymap = folium.Map(location=map_center, zoom_start=11)
+
+        # Generate a list of colors for different clusters using matplotlib
+        num_clusters = len(df['location'].unique())
+        cmap = plt.cm.get_cmap('tab10', num_clusters)
+        cluster_colors = {cluster: mcolors.rgb2hex(cmap(cluster / num_clusters)) for cluster in df['location'].unique()}
+
+        # Add points to the map with cluster-specific colors
+        for index, row in df.iterrows():
+            cluster = row['location']
+            color = cluster_colors[cluster]
+            folium.CircleMarker(
+                location=[row['latitude'], row['longitude']],
+                radius=5,
+                color=color,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.7,
+                popup=f'Cluster: {cluster}'
+            ).add_to(mymap)
+
+        # Add a legend to the map
+        legend_html = '''
+        <div style="position: fixed;
+                    bottom: 50px; left: 50px; width: 150px; height: auto;
+                    border:2px solid grey; z-index:9999; font-size:14px;
+                    background-color:white; opacity: 0.85;">
+        <strong> Locations: </strong><br>
+        '''
+        for cluster, color in cluster_colors.items():
+            legend_html += f'<i style="background:{color};width:20px;height:20px;float:left;margin-right:10px;"></i>Location {cluster}<br>'
+
+        legend_html += '</div>'
+        mymap.get_root().html.add_child(folium.Element(legend_html))
+
+        return mymap._repr_html_()
+
+    def drop_location_outliers(self, df, distance_radius=20):
+      from math import radians, cos, sin, asin, sqrt
+
+      def haversine(lat1, lon1, lat2, lon2):
+          # Convert decimal degrees to radians
+          lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+          # Haversine formula
+          dlat = lat2 - lat1
+          dlon = lon2 - lon1
+          a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+          c = 2 * asin(sqrt(a))
+          r = 6371  # Radius of earth in kilometers
+          return c * r
+
+      center_lat = df['latitude'].median()
+      center_lon = df['longitude'].median()
+
+      df['distance_from_center'] = df.apply(
+          lambda row: haversine(center_lat, center_lon, row['latitude'], row['longitude']), axis=1
+      )
+
+      df = df[df['distance_from_center'] <= distance_radius]
+      df = df.drop(columns='distance_from_center')
+
+      return df
+
+    def remove_outliers(self, df, multiplier=1.5, q1=0.25, q3=0.85):
+        Q1 = df.quantile(q1)
+        Q3 = df.quantile(q3)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - multiplier * IQR
+        upper_bound = Q3 + multiplier * IQR
+
+        return df[~((df < lower_bound) | (df > upper_bound)).any(axis=1)]
