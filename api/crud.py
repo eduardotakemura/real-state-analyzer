@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
-from models import Properties
+from models import Properties, PriceModels
 from fastapi import HTTPException
 from utils import export_to_csv
 from sqlalchemy import func
+from datetime import datetime
 
 def get_all_properties(db: Session):
     try:
@@ -153,6 +154,37 @@ def load_data(db: Session, data: list):
         db.rollback()
         print(f"Error loading data: {e}")
         return False
+
+def save_price_model(db: Session, operation: str, clusters_map: str, k_clusters: int):
+    try:
+        # Check if model exists for this operation
+        existing_model = db.query(PriceModels).filter(PriceModels.operation == operation).first()
+        
+        if existing_model:
+            # Update existing model
+            existing_model.clusters_map = clusters_map
+            existing_model.k_clusters = k_clusters
+            existing_model.timestamp = datetime.now()
+        else:
+            # Create new model
+            new_model = PriceModels(
+                operation=operation,
+                clusters_map=clusters_map,
+                k_clusters=k_clusters
+            )
+            db.add(new_model)
+        
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        _error_handler(e)
+
+def get_all_price_models(db: Session):
+    try:
+        return db.query(PriceModels).all()
+    except Exception as e:
+        _error_handler(e)
 
 ## ---------------- Utilities Methods ---------------- ##
 def _error_handler(error: Exception):

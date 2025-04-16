@@ -3,6 +3,10 @@ import json
 import asyncio
 from typing import List
 from fastapi import WebSocket
+import sys
+sys.path.append('..')
+from crud import save_price_model
+from extensions import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +64,10 @@ def price_prediction_callback(ch, method, properties, body):
             try:
                 decoded_body = json.loads(body)
                 logger.info(f"Received Price Prediction response: {decoded_body}")
+
             except json.JSONDecodeError:
                 logger.error("Failed to decode JSON from price prediction response")
+      
     except Exception as e:
         logger.error(f"Error in price_prediction_callback: {e}")
 
@@ -78,6 +84,14 @@ def training_callback(ch, method, properties, body):
                 logger.info(f"Received Training response: {decoded_body['status']}")
             except json.JSONDecodeError:
                 logger.error("Failed to decode JSON from training response")
+        
+        # Save price configs
+        logger.info(f"Saving price configs")
+        db = next(get_db())
+        save_price_model(db, decoded_body['operation'], decoded_body['clusters_map'], decoded_body['k_clusters'])
+        db.close()
+        logger.info(f"Price configs saved successfully")
+        
     except Exception as e:
         logger.error(f"Error in training_callback: {e}")
 

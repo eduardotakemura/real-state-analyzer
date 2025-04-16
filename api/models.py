@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, String, Float, DateTime
 from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -23,5 +24,14 @@ class Properties(Base):
     city = Column(String(255), nullable=False)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+
+class PriceModels(Base):
+    __tablename__ = 'price_models'
+
+    id = Column(Integer, primary_key=True)
+    operation = Column(String(50), unique=True, nullable=False)
+    clusters_map = Column(String, nullable=False)  # Will store HTML content
+    k_clusters = Column(Integer, nullable=False)
+    timestamp = Column(DateTime, default=datetime.now, nullable=False)
 
 
