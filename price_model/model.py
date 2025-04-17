@@ -269,6 +269,7 @@ class PriceModel:
 
             # Convert np to int
             return {
+                'operation': input_data["operation"],
                 'predicted_price': int(np.round(price, 0)),
                 'predicted_additional_costs': int(np.round(additional_cost, 0))
             }

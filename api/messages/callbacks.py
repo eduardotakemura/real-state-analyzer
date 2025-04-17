@@ -54,7 +54,12 @@ def analyzer_callback(ch, method, properties, body):
         logger.error(f"Error in analyzer_callback: {e}")
     
 def price_prediction_callback(ch, method, properties, body):
+    logger.info(f"Received Price Prediction Response")
     try:
+        # Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         # Decode the body if it's bytes
         if isinstance(body, bytes):
             body = body.decode('utf-8')
@@ -62,12 +67,19 @@ def price_prediction_callback(ch, method, properties, body):
         # Parse the JSON if it's a string
         if isinstance(body, str):
             try:
-                decoded_body = json.loads(body)
-                logger.info(f"Received Price Prediction response: {decoded_body}")
-
+                body = json.loads(body)
             except json.JSONDecodeError:
-                logger.error("Failed to decode JSON from price prediction response")
-      
+                logger.error("Failed to decode JSON from body")
+                return
+        
+        # Broadcast the message
+        loop.run_until_complete(broadcast_report({
+            "type": "price",
+            "data": body
+        }))
+        
+        # Close the loop
+        loop.close()
     except Exception as e:
         logger.error(f"Error in price_prediction_callback: {e}")
 

@@ -50,7 +50,7 @@ const InsightsForm = () => {
         const socket = new WebSocket('ws://localhost:8000/ws-insights');
 
         socket.onopen = () => {
-            console.log('WebSocket connection established');
+            console.log('Analyzer WebSocket connection established');
         };
 
         socket.onmessage = (event) => {
@@ -58,7 +58,7 @@ const InsightsForm = () => {
                 // Replace NaN values with null before parsing
                 const sanitizedData = event.data.replace(/:NaN/g, ':null');
                 const message = JSON.parse(sanitizedData);
-                console.log("Received WebSocket message:", message);
+                console.log("Received Analyzer WebSocket message:", message);
 
                 if (message.type === 'analysis') {
                     console.log("Analysis data received:", message.data);
@@ -69,16 +69,16 @@ const InsightsForm = () => {
                     setIsSubmitting(false);
                 }
             } catch (error) {
-                console.error("Error parsing WebSocket message:", error);
+                console.error("Error parsing Analyzer WebSocket message:", error);
             }
         };
 
         socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
+            console.error("Analyzer WebSocket error:", error);
         };
 
         socket.onclose = () => {
-            console.log("WebSocket connection closed");
+            console.log("Analyzer WebSocket connection closed");
         };
 
         return () => socket.close();

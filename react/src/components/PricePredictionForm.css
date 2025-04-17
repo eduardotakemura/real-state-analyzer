@@ -179,3 +179,67 @@ input[type="number"] {
     line-height: 1.5;
     margin: 0;
 }
+
+.prediction-display {
+    margin-top: 2rem;
+    padding: 2rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.prediction-display h3 {
+    color: #2c3e50;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+.prediction-values {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.prediction-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.prediction-item.total {
+    background-color: #e3f2fd;
+    font-weight: bold;
+}
+
+.prediction-label {
+    color: #666;
+    font-size: 1rem;
+}
+
+.prediction-value {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.prediction-item.total .prediction-value {
+    color: #1976d2;
+    font-size: 1.2rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

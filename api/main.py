@@ -23,6 +23,21 @@ async def insights_websocket(websocket: WebSocket):
         if websocket in connected_clients:
             connected_clients.remove(websocket)
 
+@app.websocket("/ws-price")
+async def price_websocket(websocket: WebSocket):
+    await websocket.accept()
+    connected_clients.append(websocket)
+    try:
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except:
+        connected_clients.remove(websocket)
+    finally:
+        # Ensure client is removed from list
+        if websocket in connected_clients:
+            connected_clients.remove(websocket)
+
 ## ---------------- Dependencies Methods ---------------- ##
 async def get_filters(request: Request):
     filter_data = await request.json()

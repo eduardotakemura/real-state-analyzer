@@ -30,6 +30,30 @@ const MapModal = ({ mapHtml, onClose }) => (
     </div>
 );
 
+const PredictionDisplay = ({ predictions }) => {
+    if (!predictions) return null;
+
+    // Capitalize operation
+    const operation = predictions.operation.charAt(0).toUpperCase() + predictions.operation.slice(1);
+    const price_text = operation === "Selling" ? `R$${predictions.predicted_price.toLocaleString()}` : `R$${predictions.predicted_price.toLocaleString()}/month`;
+
+    return (
+        <div className="prediction-display">
+            <h3>Price Prediction Results</h3>
+            <div className="prediction-values">
+                <div className="prediction-item total">
+                    <span className="prediction-label">Predicted {operation} Price:</span>
+                    <span className="prediction-value">{price_text}</span>
+                </div>
+                <div className="prediction-item">
+                    <span className="prediction-label">Additional Costs (IPTU, Condomínio, etc.):</span>
+                    <span className="prediction-value">R${predictions.predicted_additional_costs.toLocaleString()}/month</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const PricePredictionForm = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +62,7 @@ const PricePredictionForm = () => {
     const [options, setOptions] = useState([]);
     const [availableOperations, setAvailableOperations] = useState([]);
     const [availableLocations, setAvailableLocations] = useState([]);
+    const [predictions, setPredictions] = useState(null);
     const [availableTypes] = useState([
         { label: 'Apartment', value: 1 },
         { label: 'House', value: 0 }
@@ -52,6 +77,47 @@ const PricePredictionForm = () => {
         garage: '',
         map: ''
     });
+
+    // WebSocket connection
+    useEffect(() => {
+        const socket = new WebSocket('ws://localhost:8000/ws-price');
+
+        socket.onopen = () => {
+            console.log('Price WebSocket connection established');
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data);
+                console.log("Received Price WebSocket message:", message);
+
+                if (message.type === "price") {
+                    setPredictions(message.data);
+                    setIsSubmitting(false);
+
+                    // Smooth scroll to predictions
+                    setTimeout(() => {
+                        const predictionElement = document.querySelector('.prediction-display');
+                        if (predictionElement) {
+                            predictionElement.scrollIntoView({ behavior: 'smooth' });
+                        }
+                    }, 100);
+                }
+            } catch (error) {
+                console.error("Error parsing Price WebSocket message:", error);
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("Price WebSocket error:", error);
+        };
+
+        socket.onclose = () => {
+            console.log("Price WebSocket connection closed");
+        };
+
+        return () => socket.close();
+    }, []);
 
     // Fetch models options
     useEffect(() => {
@@ -143,12 +209,30 @@ const PricePredictionForm = () => {
     const handleSubmit = (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // TODO: Implement API call to backend for price prediction
-        console.log('Form submitted:', formData);
-        // Simulate API call
-        setTimeout(() => {
-            setIsSubmitting(false);
-        }, 2000);
+        setPredictions(null); // Clear previous predictions
+
+        const requestData = {
+            "operation": formData.operation,
+            "type": formData.type === 1 ? [1, 0] : [0, 1],
+            "location": parseInt(formData.location),
+            "size": parseInt(formData.size),
+            "dorms": parseInt(formData.dorms),
+            "toilets": parseInt(formData.toilets),
+            "garage": parseInt(formData.garage)
+        }
+        console.log('Form submitted:', requestData);
+
+        fetch('http://localhost:8000/request-price-prediction', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+            .catch(error => {
+                console.error('Error:', error);
+                setIsSubmitting(false);
+            });
     };
 
     const handleShowMap = () => {
@@ -275,6 +359,8 @@ const PricePredictionForm = () => {
                     Predict Price
                 </button>
             </form>
+
+            {predictions && <PredictionDisplay predictions={predictions} />}
         </div>
     );
 };
