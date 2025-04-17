@@ -108,11 +108,6 @@ def all_properties(db: Session = Depends(get_db)):
 def properties_with_filter(db: Session = Depends(get_db), filters: dict = Depends(get_filters)):
     return crud.get_properties_with_filter(db, filters)
 
-# Get properties by id
-@app.get("/properties/{property_id}")
-def property_by_id(db: Session = Depends(get_db), property_id: int = Path(..., description="Property ID")):
-    return crud.get_property_by_id(db, property_id)
-
 ## ---------------- Data Routes ---------------- ##
 @app.get("/export-properties")
 def export_properties(db: Session = Depends(get_db)):

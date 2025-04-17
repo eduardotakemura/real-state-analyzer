@@ -111,12 +111,6 @@ def get_properties_options(db: Session, operation: str):
     except Exception as e:
         _error_handler(e)
 
-def get_property_by_id(db: Session, property_id: int):
-    try:
-        return db.query(Properties).filter(Properties.id == property_id).first()
-    except Exception as e:
-        _error_handler(e)
-
 def get_export_to_csv(db: Session):
     try:
         properties = db.query(Properties).all()

@@ -7,6 +7,10 @@
     box-sizing: border-box;
 }
 
+.form-description {
+    margin-bottom: 2rem;
+}
+
 .report-container {
     width: 100%;
     padding: 1rem;

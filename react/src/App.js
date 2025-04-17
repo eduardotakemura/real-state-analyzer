@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import Tabs from './components/Tabs';
 import InsightsForm from './components/InsightsForm';
 import PricePredictionForm from './components/PricePredictionForm';
+import ApiInterface from './components/ApiInterface';
 
 function App() {
     const [activeTab, setActiveTab] = useState('insights');
@@ -19,8 +20,10 @@ function App() {
                 <div className="content">
                     {activeTab === 'insights' ? (
                         <InsightsForm />
-                    ) : (
+                    ) : activeTab === 'prediction' ? (
                         <PricePredictionForm />
+                    ) : (
+                        <ApiInterface />
                     )}
                 </div>
             </div>

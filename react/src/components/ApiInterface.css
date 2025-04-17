@@ -1,0 +1,198 @@
+.api-interface {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.api-interface h2 {
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    text-align: left;
+}
+
+.api-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.api-header {
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.api-route {
+    font-family: monospace;
+    color: var(--primary-color);
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+
+.api-description {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.api-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.input-group label {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.api-actions input,
+.api-actions select {
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: white;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.api-actions input:focus,
+.api-actions select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.api-actions input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.api-actions button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+    align-self: flex-start;
+}
+
+.api-actions button:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+}
+
+.api-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+.loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 4px;
+    z-index: 1000;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: white;
+    margin-top: 1rem;
+    font-size: 1.1rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.result-box {
+    text-align: left;
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    max-width: 100%;
+    overflow-x: auto;
+
+}
+
+.result-box pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+} 

@@ -250,6 +250,10 @@ const PricePredictionForm = () => {
             {showMap && <MapModal mapHtml={formData.map} onClose={handleCloseMap} />}
 
             <form onSubmit={handleSubmit} className="prediction-form">
+                <div className="form-description">
+                    <p>Predict selling/renting prices using our price prediction model.</p>
+                    <p>Use the "Check Location Map" button to visualize the location clusters used in our model training.</p>
+                </div>
                 {/* Row 1: Operation and Type */}
                 <div className="form-row">
                     <SelectionField

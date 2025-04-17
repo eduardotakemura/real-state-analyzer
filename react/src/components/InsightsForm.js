@@ -210,6 +210,10 @@ const InsightsForm = () => {
 
             {!showReport ? (
                 <form onSubmit={handleSubmit} className="insights-form">
+                    <div className="form-description">
+                        <p>Use the following form to get insights about the property you want to sell or rent,
+                            apply filters to refine your search and get more accurate results.</p>
+                    </div>
                     <SelectionField
                         id="operation"
                         title="Select Desired Operation (Selling/Renting)"
@@ -354,7 +358,7 @@ const InsightsForm = () => {
                             </div>
 
                             <button type="submit" className={`submit-button ${formData.operation === '' ? 'disabled' : ''}`}>
-                                Search Properties
+                                Get Insights
                             </button>
                         </>
                     )}

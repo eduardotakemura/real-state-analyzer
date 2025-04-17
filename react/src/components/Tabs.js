@@ -16,6 +16,12 @@ const Tabs = ({ activeTab, setActiveTab }) => {
             >
                 Price Prediction
             </button>
+            <button
+                className={`tab ${activeTab === 'api' ? 'active' : ''}`}
+                onClick={() => setActiveTab('api')}
+            >
+                API
+            </button>
         </div>
     );
 };
