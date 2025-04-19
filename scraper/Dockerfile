@@ -23,20 +23,8 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-
 RUN echo "Fetching ChromeDriver..." \
-    # && API_RESPONSE=$(curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json) \
-    # && CHROME_URL=$(echo "$API_RESPONSE" | jq -r '.channels.Stable.downloads.chrome[] | select(.platform=="linux64") | .url') \
-    # && CHROMEDRIVER_URL=$(echo "$API_RESPONSE" | jq -r '.channels.Stable.downloads.chromedriver[] | select(.platform=="linux64") | .url') \
-    #&& CHROME_URL="https://storage.googleapis.com/chrome-for-testing-public/132.0.6779.0/linux64/chrome-linux64.zip" \
     && CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/134.0.6998.165/linux64/chromedriver-linux64.zip" \
-    # && echo "Downloading Chrome from $CHROME_URL..." \
-    # && wget -q "$CHROME_URL" -O chrome-linux64.zip \
-    # && unzip chrome-linux64.zip \
-    # && mkdir -p /opt/google/chrome \
-    # && mv chrome-linux64 /opt/google/chrome \
-    # && ln -s /opt/google/chrome/chrome-linux64 /usr/bin/google-chrome \
-    # && rm -rf chrome-linux64.zip \
     \
     && echo "Downloading ChromeDriver from $CHROMEDRIVER_URL..." \
     && wget -q "$CHROMEDRIVER_URL" -O chromedriver-linux64.zip \

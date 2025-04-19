@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: react
+spec:
+  selector:
+    app: react
+  type: LoadBalancer
+  ports:
+    - port: 3000
+      targetPort: 3000

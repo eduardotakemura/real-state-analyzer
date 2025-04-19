@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SelectionField from './SelectionField.js';
 import AnalysisReport from './AnalysisReport.js';
 import './InsightsForm.css';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">
@@ -47,7 +48,7 @@ const InsightsForm = () => {
 
     // WebSocket connection
     useEffect(() => {
-        const socket = new WebSocket('ws://localhost:8000/ws-insights');
+        const socket = new WebSocket(`${API_URL}/ws-insights`);
 
         socket.onopen = () => {
             console.log('Analyzer WebSocket connection established');
@@ -106,7 +107,7 @@ const InsightsForm = () => {
 
     // Fetch initial options
     useEffect(() => {
-        fetch('http://localhost:8000/properties/initial-options')
+        fetch(`${API_URL}/properties/initial-options`)
             .then(response => response.json())
             .then(data =>
                 setOptions({
@@ -149,7 +150,7 @@ const InsightsForm = () => {
             setShowAllFields(true);
 
             // Fetch options for operation
-            fetch(`http://localhost:8000/properties/options/${selectedOperation}`)
+            fetch(`${API_URL}/properties/options/${selectedOperation}`)
                 .then(response => response.json())
                 .then(data => {
                     setOptions(prev => ({
@@ -185,7 +186,7 @@ const InsightsForm = () => {
         setIsSubmitting(true);
         setShowReport(false);
 
-        fetch('http://localhost:8000/request-analysis', {
+        fetch(`${API_URL}/request-analysis`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: price-model
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: price-model
+  template:
+    metadata:
+      labels:
+        app: price-model
+    spec:
+      containers:
+        - name: price-model
+          image: eduardotakemura/real-state-price-model:latest
+          volumeMounts:
+            - name: price-model-data
+              mountPath: /app/data
+          env:
+            - name: RABBITMQ_HOST
+              value: rabbitmq
+            - name: RABBITMQ_PORT
+              value: "5672"
+            - name: RABBITMQ_USER
+              value: guest
+            - name: RABBITMQ_PASS
+              value: guest
+      volumes:
+        - name: price-model-data
+          persistentVolumeClaim:
+            claimName: price-model-pvc

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import SelectionField from './SelectionField.js';
 import './PricePredictionForm.css';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">
@@ -80,7 +81,7 @@ const PricePredictionForm = () => {
 
     // WebSocket connection
     useEffect(() => {
-        const socket = new WebSocket('ws://localhost:8000/ws-price');
+        const socket = new WebSocket(`${API_URL}/ws-price`);
 
         socket.onopen = () => {
             console.log('Price WebSocket connection established');
@@ -122,7 +123,7 @@ const PricePredictionForm = () => {
     // Fetch models options
     useEffect(() => {
         setIsLoading(true);
-        fetch('http://localhost:8000/price-models')
+        fetch(`${API_URL}/price-models`)
             .then(response => response.json())
             .then(data => {
                 const options = data.map(option => ({
@@ -222,7 +223,7 @@ const PricePredictionForm = () => {
         }
         console.log('Form submitted:', requestData);
 
-        fetch('http://localhost:8000/request-price-prediction', {
+        fetch(`${API_URL}/request-price-prediction`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

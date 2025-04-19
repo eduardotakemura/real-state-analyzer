@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scraper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scraper
+  template:
+    metadata:
+      labels:
+        app: scraper
+    spec:
+      containers:
+        - name: scraper
+          image: eduardotakemura/real-state-scraper:latest
+          volumeMounts:
+            - name: scraper-data
+              mountPath: /app/data
+            - name: dshm
+              mountPath: /dev/shm
+          env:
+            - name: LOCATION_IQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: locationiq-secret
+                  key: LOCATION_IQ_API_KEY
+      volumes:
+        - name: scraper-data
+          persistentVolumeClaim:
+            claimName: scraper-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory

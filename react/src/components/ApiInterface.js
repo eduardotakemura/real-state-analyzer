@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './ApiInterface.css';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">
@@ -30,7 +31,7 @@ const ApiInterface = () => {
     const handleExport = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/export-properties')
+            const response = await fetch(`${API_URL}/export-properties`)
                 .then(response => {
                     if (response.ok) {
                         setResults({ ...results, export: 'Properties exported successfully.\nCheck the api/properties.csv file' });
@@ -49,7 +50,7 @@ const ApiInterface = () => {
     const handleTraining = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/request-training', {
+            const response = await fetch(`${API_URL}/request-training`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -84,7 +85,7 @@ const ApiInterface = () => {
                 tasks: selectedTasks
             };
 
-            const response = await fetch('http://localhost:8000/request-scraping', {
+            const response = await fetch(`${API_URL}/request-scraping`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
