@@ -9,4 +9,3 @@ spec:
     - port: 8000
       targetPort: 8000
   type: LoadBalancer
-  loadBalancerIP: 35.232.2.68
