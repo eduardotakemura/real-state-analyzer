@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './ApiInterface.css';
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = window.REACT_APP_API_URL;
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">

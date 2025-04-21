@@ -19,8 +19,13 @@ class Loader:
             # Rename id col to page_id
             df = self.df.rename(columns={'id': 'page_id'})
 
+            # Exclude lat/lng == 0.0 rows
+            df = df[df['latitude'] != 0.0]
+            df = df[df['longitude'] != 0.0]
+
             # Convert DataFrame to list of dictionaries
             data_list = df.to_dict(orient="records")
+            
             # Send the list directly as the JSON payload
             response = requests.post(self.api_url, json=data_list)
             response.raise_for_status()

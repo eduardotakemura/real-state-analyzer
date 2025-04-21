@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SelectionField from './SelectionField.js';
 import AnalysisReport from './AnalysisReport.js';
 import './InsightsForm.css';
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = window.REACT_APP_API_URL;
 
 const LoadingOverlay = () => (
     <div className="loading-overlay">

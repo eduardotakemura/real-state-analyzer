@@ -4,6 +4,7 @@ import requests
 import time
 import os
 from geopy.distance import geodesic
+import logging
 
 class Preprocessor:
     def __init__(self):
@@ -11,21 +12,76 @@ class Preprocessor:
         self.api_url = "https://us1.locationiq.com/v1/search"
         self.API_KEY = os.getenv('LOCATION_IQ_API_KEY')
         self.file_name_saving = None
+        # Set up logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
 
     def preprocess_data(self, file_name):
         # Load raw data
         self.df = pd.read_csv(file_name)
+        
+        # Create a copy of the original DataFrame to track dropped rows
+        original_rows = len(self.df)
+        
+        # Process data with error handling
+        try:
+            self._extract_type()
+        except Exception as e:
+            self.logger.error(f"Error in _extract_type: {e}")
+            self.df = self.df.dropna(subset=['type'])
 
-        # Process data
-        self._extract_type()
-        self._extract_address()
-        self._clean_size()
-        self._clean_price()
-        self._clean_additional_costs()
-        self._clean_details()
-        self._clean_ids()
-        self._clean_links()
-        self._initiate_lat_lng()
+        try:
+            self._extract_address()
+        except Exception as e:
+            self.logger.error(f"Error in _extract_address: {e}")
+            self.df = self.df.dropna(subset=['street', 'neighborhood', 'city'])
+
+        try:
+            self._clean_size()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_size: {e}")
+            self.df = self.df.dropna(subset=['size'])
+
+        try:
+            self._clean_price()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_price: {e}")
+            self.df = self.df.dropna(subset=['price'])
+
+        try:
+            self._clean_additional_costs()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_additional_costs: {e}")
+            self.df = self.df.dropna(subset=['additional_costs'])
+
+        try:
+            self._clean_details()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_details: {e}")
+            self.df = self.df.dropna(subset=['dorms', 'garage', 'toilets'])
+
+        try:
+            self._clean_ids()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_ids: {e}")
+            self.df = self.df.dropna(subset=['id'])
+
+        try:
+            self._clean_links()
+        except Exception as e:
+            self.logger.error(f"Error in _clean_links: {e}")
+            self.df = self.df.dropna(subset=['link'])
+
+        try:
+            self._initiate_lat_lng()
+        except Exception as e:
+            self.logger.error(f"Error in _initiate_lat_lng: {e}")
+            self.df = self.df.dropna(subset=['latitude', 'longitude'])
+
+        # Log the number of dropped rows
+        dropped_rows = original_rows - len(self.df)
+        if dropped_rows > 0:
+            self.logger.warning(f"Dropped {dropped_rows} rows due to errors during preprocessing")
 
         # Save preprocessed data
         self.file_name_saving = file_name.split('.csv')[0] + '_preprocessed.csv'
@@ -215,7 +271,7 @@ class Preprocessor:
         self.df['id'] = self.df['id'].fillna(0)
 
         # Convert to int (getting rid of decimal part) and str
-        self.df['id'] = self.df['id'].astype(int).astype(str)
+        self.df['id'] = self.df['id'].astype(float).astype(int).astype(str)
 
     def _clean_links(self):
         # Handle NaN

@@ -15,5 +15,9 @@ spec:
       containers:
         - name: react
           image: eduardotakemura/real-state-react:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
+          env:
+            - name: REACT_APP_API_URL
+              value: http://35.232.2.68:8000

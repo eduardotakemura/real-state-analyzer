@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time
+import re
 
 class Extractor:
     def __init__(self, driver):
@@ -21,7 +22,7 @@ class Extractor:
             soup = BeautifulSoup(page_source, 'html.parser')
             
             # Find all property cards
-            search = soup.select('div[data-cy="rp-property-cd"]')
+            search = soup.select('[data-cy="rp-property-cd"]')
 
             if len(search) > 0:
                 break
@@ -81,35 +82,43 @@ class Extractor:
 
     def _extract_link(self, card):
         try:
-            link_element = card.select_one('div > a[itemprop="url"]')
+            link_element = card.select_one('a:nth-of-type(1)')
             return link_element['href'] if link_element else ''
         except:
             return ''
 
     def _extract_id(self, card):
         try:
-            id_element = card.select_one('div > a[itemprop="url"]')
-            return id_element['data-id'] if id_element else ''
+            id_element = card.select_one('a:nth-of-type(1)')
+            link = id_element['href']
+            id = link.split('-id-')[1]
+            id = id.split('/')[0]
+
+            return id if id else ''
         except:
             return ''
 
     def _extract_title(self, card):
         try:
-            section = card.select_one('[itemprop="address"]')
-            spans = section.select('span')
+            section = card.select_one('div.flex.flex-col.grow.min-w-0.content-stretch.border-neutral-90.min-\[1280px\]\:border-l.pb-2.gap-2')
+            holder = section.select_one('h2')
+            spans = holder.select('span')
             return spans[0].text if spans else ''
         except:
             return ''
 
     def _extract_address(self, card):
         try:
-            neighborhood = card.select_one('span[data-cy="rp-cardProperty-location-txt"]')
-            neighborhood = neighborhood.text if neighborhood else ''
+            section = card.select_one('div.flex.flex-col.grow.min-w-0.content-stretch.border-neutral-90.min-\[1280px\]\:border-l.pb-2.gap-2')
+            neighborhood = section.select_one('h2')
+            # Get only the direct text content of the h2, ignoring span text
+            neighborhood = neighborhood.find(text=True, recursive=False).strip() if neighborhood else ''
         except:
             neighborhood = ''
         
         try:
-            street = card.select_one('p[data-cy="rp-cardProperty-street-txt"]')
+            section = card.select_one('div.flex.flex-col.grow.min-w-0.content-stretch.border-neutral-90.min-\[1280px\]\:border-l.pb-2.gap-2')
+            street = section.select_one('p')
             street = street.text if street else ''
         except:
             street = ''
@@ -135,7 +144,13 @@ class Extractor:
         def _get_element_text(selector):
             try:
                 element = card.select_one(selector)
-                return element.text if element else ''
+                if element:
+                    # Extract only the number from text like "Tamanho do imóvel 32 m²" or "Quantidade de quartos 1"
+                    text = element.text.strip()
+                    # Find first number in the text
+                    match = re.search(r'\d+', text)
+                    return match.group(0) if match else ''
+                return ''
             except:
                 return ''
 

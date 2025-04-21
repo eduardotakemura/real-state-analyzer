@@ -15,6 +15,7 @@ spec:
       containers:
         - name: api
           image: eduardotakemura/real-state-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:

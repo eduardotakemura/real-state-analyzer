@@ -10,7 +10,7 @@ class Navigator:
     def scroll_down(self):
         print("Scrolling down...")
         try:
-            scrolls = 5
+            scrolls = 10
             for _ in range(scrolls):
                 try:
                     # First try to get the bottom navbar
